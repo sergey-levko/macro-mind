@@ -1,0 +1,68 @@
+schema: spec-driven
+
+context: |
+  ## Project: MacroMind
+  AI-powered nutritional tracking & personalized meal intelligence application.
+
+  ## Domain
+  Users log daily meals, track macros (calories, protein, carbs, fat) against personal targets,
+  and receive AI-generated personalized nutrition advice powered by Claude AI.
+
+  ## Tech Stack
+  **Backend:**
+  - Java 21 + Spring Boot 3
+  - Spring AI — Claude API integration with structured output parsing
+  - Spring Data JPA + Hibernate
+  - PostgreSQL 16
+  - Liquibase — all schema changes via changesets (never raw SQL)
+  - Docker Compose for local development
+
+  **Frontend:**
+  - React + TypeScript
+  - TailwindCSS
+  - Recharts — macro/calorie chart visualizations
+
+  **AI Integration:**
+  - Claude API via Spring AI
+  - Structured output parsing from Claude responses
+  - User profile (age, weight, height, goal_type) always included as AI context
+
+  ## Database Schema (PostgreSQL, all PKs are UUID)
+  - users: id, email, name, age, weight_kg, height_cm, goal_type (ENUM)
+  - foods: id, user_id FK, name, source, calories_100g, protein_g, carbs_g, fat_g
+  - meal_logs: id, user_id FK, logged_at, meal_type ENUM (BREAKFAST/LUNCH/DINNER/SNACK)
+  - meal_items: id, meal_log_id FK, food_id FK, quantity_g
+  - nutritional_goals: id, user_id FK, calories_target, protein_g, carbs_g, fat_g
+  - ai_advice: id, user_id FK, advice_type ENUM, content TEXT, period_start DATE, created_at
+
+  ## Architecture Style
+  - Vertical-slice architecture on the backend
+  - Each feature slice contains: controller → service → repository → entity → DTO
+
+  ## Conventions
+  - Conventional commits (feat:, fix:, chore:, test:, etc.)
+  - Each implementation task committed atomically to git
+  - Unit tests: JUnit 5 + Mockito
+  - Integration tests: Testcontainers (real PostgreSQL, no mocks for DB)
+  - REST API: JSON, versioned under /api/v1/
+  - External food data: USDA FoodData Central API (180,000+ foods)
+
+  ## SDLC Workflow
+  OpenSpec spec-first proposals → Claude Code implements as vertical slices.
+  Developer owns: requirements, proposals, architecture approval, code review, smoke testing.
+  Agent owns: architecture design, task breakdown, implementation, tests, Liquibase changesets, commits.
+
+rules:
+  proposal:
+    - Always include a "Non-goals" section
+    - Reference the affected database tables explicitly
+    - Specify which API endpoints will be added or modified
+  design:
+    - Use vertical-slice structure for all new features
+    - Include Liquibase changeset requirements for any schema changes
+    - Document Spring AI / Claude API integration points explicitly
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Each task must result in a single atomic git commit
+    - Database tasks (Liquibase changesets) must be a separate task before service/controller tasks
+    - Every feature task must include a corresponding test task (unit + integration)

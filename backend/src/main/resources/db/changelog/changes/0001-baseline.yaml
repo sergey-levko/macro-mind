@@ -1,0 +1,6 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0001-baseline
+      author: macromind
+      comment: "Baseline changeset — establishes Liquibase tracking infrastructure"
+      changes: []
