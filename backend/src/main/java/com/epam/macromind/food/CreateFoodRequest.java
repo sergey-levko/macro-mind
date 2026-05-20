@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-record CreateFoodRequest(
+public record CreateFoodRequest(
         @NotBlank String name,
         @NotNull BigDecimal calories100g,
         @NotNull BigDecimal proteinG,

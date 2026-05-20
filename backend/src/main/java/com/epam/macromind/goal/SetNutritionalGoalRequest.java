@@ -1,12 +1,12 @@
 package com.epam.macromind.goal;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 record SetNutritionalGoalRequest(
-        @NotNull @DecimalMin(value = "0", exclusive = true) BigDecimal caloriesTarget,
-        @NotNull @DecimalMin(value = "0", exclusive = true) BigDecimal proteinG,
-        @NotNull @DecimalMin(value = "0", exclusive = true) BigDecimal carbsG,
-        @NotNull @DecimalMin(value = "0", exclusive = true) BigDecimal fatG
+        @NotNull @Positive BigDecimal caloriesTarget,
+        @NotNull @Positive BigDecimal proteinG,
+        @NotNull @Positive BigDecimal carbsG,
+        @NotNull @Positive BigDecimal fatG
 ) {}
