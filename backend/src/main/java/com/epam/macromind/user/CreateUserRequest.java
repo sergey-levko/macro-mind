@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-record CreateUserRequest(
+public record CreateUserRequest(
         @NotBlank String name,
         @NotBlank String email,
         @NotNull Integer age,
