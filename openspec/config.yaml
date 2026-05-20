@@ -54,6 +54,7 @@ context: |
 
 rules:
   proposal:
+    - Create a dedicated git branch named after the change (e.g. feat/<change-name>) before writing the proposal
     - Always include a "Non-goals" section
     - Reference the affected database tables explicitly
     - Specify which API endpoints will be added or modified
@@ -67,7 +68,6 @@ rules:
     - Database tasks (Liquibase changesets) must be a separate task before service/controller tasks
     - Every feature task must include a corresponding test task (unit + integration)
   implementation:
-    - Create a dedicated git branch named after the change (e.g. feat/<change-name>) before starting implementation
     - After all tasks are committed, push the branch to the remote and open a pull request targeting main
   archive:
     - Before archiving, ensure the pull request for the change branch is submitted (merged) into main
