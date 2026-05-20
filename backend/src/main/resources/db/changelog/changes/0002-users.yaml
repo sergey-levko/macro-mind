@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0002-users
+      author: macromind
+      comment: "Create users table with goal_type CHECK constraint"
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE users (
+                id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                email      VARCHAR(255) NOT NULL,
+                name       VARCHAR(255) NOT NULL,
+                age        INTEGER,
+                weight_kg  DECIMAL(5,2),
+                height_cm  DECIMAL(5,2),
+                goal_type  VARCHAR(50)  CHECK (goal_type IN ('LOSE_WEIGHT', 'MAINTAIN_WEIGHT', 'GAIN_MUSCLE')),
+                CONSTRAINT uk_users_email UNIQUE (email)
+              )
+      rollback:
+        - dropTable:
+            tableName: users
