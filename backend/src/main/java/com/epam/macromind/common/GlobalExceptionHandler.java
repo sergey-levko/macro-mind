@@ -1,5 +1,9 @@
 package com.epam.macromind.common;
 
+import com.epam.macromind.food.FoodAccessDeniedException;
+import com.epam.macromind.food.FoodNotFoundException;
+import com.epam.macromind.food.UsdaFoodNotFoundException;
+import com.epam.macromind.food.UsdaServiceUnavailableException;
 import com.epam.macromind.user.EmailAlreadyExistsException;
 import com.epam.macromind.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +39,30 @@ public class GlobalExceptionHandler {
         Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(FieldError::getField, e -> e.getDefaultMessage() != null ? e.getDefaultMessage() : "invalid"));
         return Map.of("message", "Validation failed", "errors", fieldErrors);
+    }
+
+    @ExceptionHandler(FoodNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> handleFoodNotFound(FoodNotFoundException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(FoodAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    Map<String, String> handleFoodAccessDenied(FoodAccessDeniedException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(UsdaFoodNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> handleUsdaFoodNotFound(UsdaFoodNotFoundException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(UsdaServiceUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    Map<String, String> handleUsdaUnavailable(UsdaServiceUnavailableException ex) {
+        return Map.of("message", ex.getMessage());
     }
 
     @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
