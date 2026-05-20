@@ -4,6 +4,9 @@ import com.epam.macromind.food.FoodAccessDeniedException;
 import com.epam.macromind.food.FoodNotFoundException;
 import com.epam.macromind.food.UsdaFoodNotFoundException;
 import com.epam.macromind.food.UsdaServiceUnavailableException;
+import com.epam.macromind.meal.MealItemNotFoundException;
+import com.epam.macromind.meal.MealLogAccessDeniedException;
+import com.epam.macromind.meal.MealLogNotFoundException;
 import com.epam.macromind.user.EmailAlreadyExistsException;
 import com.epam.macromind.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -62,6 +65,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsdaServiceUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     Map<String, String> handleUsdaUnavailable(UsdaServiceUnavailableException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(MealLogNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> handleMealLogNotFound(MealLogNotFoundException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(MealLogAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    Map<String, String> handleMealLogAccessDenied(MealLogAccessDeniedException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(MealItemNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> handleMealItemNotFound(MealItemNotFoundException ex) {
         return Map.of("message", ex.getMessage());
     }
 
