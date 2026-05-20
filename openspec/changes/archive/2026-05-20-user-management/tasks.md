@@ -25,4 +25,4 @@
 
 ## 6. Pull Request
 
-- [ ] 6.1 Push branch `feat/user-management` to remote and open a pull request targeting `main` with title `feat: user management (register + profile endpoints)`
+- [x] 6.1 Push branch `feat/user-management` to remote and open a pull request targeting `main` with title `feat: user management (register + profile endpoints)`
