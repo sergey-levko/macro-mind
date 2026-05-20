@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0006-nutritional-goals
+      author: macromind
+      comment: "Create nutritional_goals table"
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE nutritional_goals (
+                id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id          UUID         NOT NULL REFERENCES users(id),
+                calories_target  DECIMAL(7,2) NOT NULL,
+                protein_g        DECIMAL(6,2) NOT NULL,
+                carbs_g          DECIMAL(6,2) NOT NULL,
+                fat_g            DECIMAL(6,2) NOT NULL,
+                CONSTRAINT uk_nutritional_goals_user UNIQUE (user_id)
+              )
+      rollback:
+        - dropTable:
+            tableName: nutritional_goals
