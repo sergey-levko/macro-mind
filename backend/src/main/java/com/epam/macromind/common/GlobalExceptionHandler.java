@@ -1,6 +1,7 @@
 package com.epam.macromind.common;
 
 import com.epam.macromind.food.FoodAccessDeniedException;
+import com.epam.macromind.goal.GoalNotFoundException;
 import com.epam.macromind.food.FoodNotFoundException;
 import com.epam.macromind.food.UsdaFoodNotFoundException;
 import com.epam.macromind.food.UsdaServiceUnavailableException;
@@ -83,6 +84,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MealItemNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     Map<String, String> handleMealItemNotFound(MealItemNotFoundException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(GoalNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> handleGoalNotFound(GoalNotFoundException ex) {
         return Map.of("message", ex.getMessage());
     }
 
