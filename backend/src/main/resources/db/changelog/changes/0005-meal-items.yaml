@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0005-meal-items
+      author: macromind
+      comment: "Create meal_items table"
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE meal_items (
+                id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                meal_log_id UUID         NOT NULL REFERENCES meal_logs(id) ON DELETE CASCADE,
+                food_id     UUID         NOT NULL REFERENCES foods(id),
+                quantity_g  DECIMAL(8,2) NOT NULL
+              )
+      rollback:
+        - dropTable:
+            tableName: meal_items
