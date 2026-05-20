@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "meal_logs")
-class MealLog {
+public class MealLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -35,9 +35,9 @@ class MealLog {
         this.loggedAt = loggedAt;
     }
 
-    UUID getId() { return id; }
-    UUID getUserId() { return userId; }
-    MealType getMealType() { return mealType; }
-    Instant getLoggedAt() { return loggedAt; }
-    List<MealItem> getItems() { return items; }
+    public UUID getId() { return id; }
+    public UUID getUserId() { return userId; }
+    public MealType getMealType() { return mealType; }
+    public Instant getLoggedAt() { return loggedAt; }
+    public List<MealItem> getItems() { return items; }
 }

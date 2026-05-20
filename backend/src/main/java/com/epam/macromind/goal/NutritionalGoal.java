@@ -6,7 +6,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "nutritional_goals")
-class NutritionalGoal {
+public class NutritionalGoal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -38,10 +38,10 @@ class NutritionalGoal {
         this.fatG = fatG;
     }
 
-    UUID getId() { return id; }
-    UUID getUserId() { return userId; }
-    BigDecimal getCaloriesTarget() { return caloriesTarget; }
-    BigDecimal getProteinG() { return proteinG; }
-    BigDecimal getCarbsG() { return carbsG; }
-    BigDecimal getFatG() { return fatG; }
+    public UUID getId() { return id; }
+    public UUID getUserId() { return userId; }
+    public BigDecimal getCaloriesTarget() { return caloriesTarget; }
+    public BigDecimal getProteinG() { return proteinG; }
+    public BigDecimal getCarbsG() { return carbsG; }
+    public BigDecimal getFatG() { return fatG; }
 }
