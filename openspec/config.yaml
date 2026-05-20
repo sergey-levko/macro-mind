@@ -66,8 +66,9 @@ rules:
     - Each task must result in a single atomic git commit
     - Database tasks (Liquibase changesets) must be a separate task before service/controller tasks
     - Every feature task must include a corresponding test task (unit + integration)
+  proposal:
+    - Create a dedicated git branch named after the change (e.g. feat/<change-name>) before writing the proposal
   implementation:
-    - Create a dedicated git branch named after the change (e.g. feat/<change-name>) before starting implementation
     - After all tasks are committed, push the branch to the remote and open a pull request targeting main
   archive:
     - Before archiving, ensure the pull request for the change branch is submitted (merged) into main
