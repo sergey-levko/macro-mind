@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec status *)",
+      "Bash(openspec instructions *)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(./mvnw test *)",
+      "Bash(docker info *)",
+      "Bash(./mvnw compile *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Bash(gh pr *)",
+      "Bash(git -C D:/project/macro-mind add .claude/skills/merge-pr/SKILL.md)",
+      "Bash(git -C D:/project/macro-mind commit -m ' *)"
+    ]
+  }
+}
