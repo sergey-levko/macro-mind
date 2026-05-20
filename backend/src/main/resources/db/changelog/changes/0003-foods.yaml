@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0003-foods
+      author: macromind
+      comment: "Create foods table"
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE foods (
+                id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id       UUID         NOT NULL REFERENCES users(id),
+                name          VARCHAR(255) NOT NULL,
+                source        VARCHAR(50)  NOT NULL,
+                calories_100g DECIMAL(7,2),
+                protein_g     DECIMAL(6,2),
+                carbs_g       DECIMAL(6,2),
+                fat_g         DECIMAL(6,2)
+              )
+      rollback:
+        - dropTable:
+            tableName: foods
