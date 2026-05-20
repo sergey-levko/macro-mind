@@ -3,7 +3,7 @@ package com.epam.macromind.user;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-record UserResponse(
+public record UserResponse(
         UUID id,
         String name,
         String email,
