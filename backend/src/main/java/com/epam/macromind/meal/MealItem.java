@@ -6,7 +6,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "meal_items")
-class MealItem {
+public class MealItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -30,8 +30,8 @@ class MealItem {
         this.quantityG = quantityG;
     }
 
-    UUID getId() { return id; }
-    MealLog getMealLog() { return mealLog; }
-    UUID getFoodId() { return foodId; }
-    BigDecimal getQuantityG() { return quantityG; }
+    public UUID getId() { return id; }
+    public MealLog getMealLog() { return mealLog; }
+    public UUID getFoodId() { return foodId; }
+    public BigDecimal getQuantityG() { return quantityG; }
 }
