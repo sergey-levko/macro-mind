@@ -35,7 +35,7 @@ public class Food {
 
     protected Food() {}
 
-    Food(UUID userId, String name, String source, BigDecimal calories100g,
+    public Food(UUID userId, String name, String source, BigDecimal calories100g,
          BigDecimal proteinG, BigDecimal carbsG, BigDecimal fatG) {
         this.userId = userId;
         this.name = name;
