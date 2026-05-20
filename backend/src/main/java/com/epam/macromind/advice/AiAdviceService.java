@@ -4,6 +4,7 @@ import com.epam.macromind.goal.NutritionalGoalRepository;
 import com.epam.macromind.user.UserRepository;
 import com.epam.macromind.user.UserNotFoundException;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +22,12 @@ class AiAdviceService {
     private final AiAdviceRepository adviceRepository;
     private final AdvicePromptBuilder promptBuilder;
 
-    AiAdviceService(ChatClient.Builder chatClientBuilder,
+    AiAdviceService(@Qualifier("aiAdviceChatClient") ChatClient chatClient,
                     UserRepository userRepository,
                     NutritionalGoalRepository goalRepository,
                     AiAdviceRepository adviceRepository,
                     AdvicePromptBuilder promptBuilder) {
-        this.chatClient = chatClientBuilder.build();
+        this.chatClient = chatClient;
         this.userRepository = userRepository;
         this.goalRepository = goalRepository;
         this.adviceRepository = adviceRepository;

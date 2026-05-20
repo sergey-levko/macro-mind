@@ -29,8 +29,8 @@ public class NutritionalGoal {
 
     protected NutritionalGoal() {}
 
-    NutritionalGoal(UUID userId, BigDecimal caloriesTarget, BigDecimal proteinG,
-                    BigDecimal carbsG, BigDecimal fatG) {
+    public NutritionalGoal(UUID userId, BigDecimal caloriesTarget, BigDecimal proteinG,
+                           BigDecimal carbsG, BigDecimal fatG) {
         this.userId = userId;
         this.caloriesTarget = caloriesTarget;
         this.proteinG = proteinG;

@@ -22,6 +22,6 @@
 
 ## 5. Tests
 
-- [ ] 5.1 Write `AiAdviceServiceTest` (Mockito): generate success, generate user not found, generate no goal, get advice, get advice not found, list advice (with and without filters)
-- [ ] 5.2 Write `AiAdviceControllerTest` (`@WebMvcTest`): POST 201, POST 400 missing fields, POST 404 unknown user, GET /{id} 200, GET /{id} 404, GET list 200
-- [ ] 5.3 Write `AiAdviceIntegrationTest` (Testcontainers + `@MockitoBean ChatClient`): generate → retrieve → list round-trip; 400 when no goal set
+- [x] 5.1 Write `AiAdviceServiceTest` (Mockito): generate success, generate user not found, generate no goal, get advice, get advice not found, list advice (with and without filters)
+- [x] 5.2 Write `AiAdviceControllerTest` (`@WebMvcTest`): POST 201, POST 400 missing fields, POST 404 unknown user, GET /{id} 200, GET /{id} 404, GET list 200
+- [x] 5.3 Write `AiAdviceIntegrationTest` (Testcontainers + `@MockitoBean ChatClient`): generate → retrieve → list round-trip; 400 when no goal set
