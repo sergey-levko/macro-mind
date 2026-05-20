@@ -25,4 +25,4 @@
 
 ## 6. Pull Request
 
-- [ ] 6.1 Push branch `feat/meal-logging` to remote and open a pull request targeting `master`
+- [x] 6.1 Push branch `feat/meal-logging` to remote and open a pull request targeting `master`
