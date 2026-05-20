@@ -1,5 +1,3 @@
-## ADDED Requirements
-
 ### Requirement: React TypeScript project initialised
 The frontend SHALL be a Vite + React + TypeScript project under `frontend/` with TailwindCSS and Recharts installed as dependencies.
 

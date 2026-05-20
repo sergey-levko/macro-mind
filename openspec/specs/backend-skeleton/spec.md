@@ -1,5 +1,3 @@
-## ADDED Requirements
-
 ### Requirement: Spring Boot application starts successfully
 The backend SHALL be a valid Spring Boot 3 / Java 21 Maven project that starts without errors when PostgreSQL is available and the required environment variables are set.
 
