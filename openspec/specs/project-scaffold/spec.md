@@ -1,5 +1,3 @@
-## ADDED Requirements
-
 ### Requirement: Root repository layout
 The repository SHALL contain a `backend/` directory for the Spring Boot project, a `frontend/` directory for the React project, a `docker-compose.yml` at the root for local infrastructure, and a `README.md` with local dev quick-start instructions.
 

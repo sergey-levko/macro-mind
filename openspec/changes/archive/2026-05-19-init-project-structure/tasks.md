@@ -34,6 +34,6 @@
 
 ## 7. Verification & Commit
 
-- [ ] 7.1 Run the full stack locally (Docker Compose DB + backend + frontend) and confirm `GET /api/v1/health` returns `{"status":"UP"}` via browser and via frontend proxy (`/api/v1/health`)
+- [x] 7.1 Run the full stack locally (Docker Compose DB + backend + frontend) and confirm `GET /api/v1/health` returns `{"status":"UP"}` via browser and via frontend proxy (`/api/v1/health`)
 - [x] 7.2 Run `./mvnw test` in `backend/` and confirm all tests pass (unit + integration)
-- [ ] 7.3 Commit all changes atomically with message `chore: init project structure (backend skeleton, frontend skeleton, docker-compose)`
+- [x] 7.3 Commit all changes atomically with message `chore: init project structure (backend skeleton, frontend skeleton, docker-compose)`
