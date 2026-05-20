@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0004-meal-logs
+      author: macromind
+      comment: "Create meal_logs table"
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE meal_logs (
+                id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id    UUID         NOT NULL REFERENCES users(id),
+                meal_type  VARCHAR(50)  NOT NULL,
+                logged_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+              )
+      rollback:
+        - dropTable:
+            tableName: meal_logs
