@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { DayPicker } from 'react-day-picker'
+import { DayPicker, DateLib } from 'react-day-picker'
+
+const mondayDateLib = new DateLib({ weekStartsOn: 1 })
 import { api } from '../lib/api'
 import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
 
@@ -479,7 +481,7 @@ function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect:
         <div className="absolute right-0 top-full mt-1 z-50">
           <DayPicker
             mode="single"
-            weekStartsOn={1}
+            dateLib={mondayDateLib}
             showOutsideDays={false}
             selected={new Date(selected + 'T12:00:00')}
             defaultMonth={new Date(selected + 'T12:00:00')}
