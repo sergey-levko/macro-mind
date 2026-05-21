@@ -129,19 +129,14 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     clearTimeout(debounceRef.current)
     if (v.length < 2) { setResults([]); setIsDropdownOpen(false); return }
     debounceRef.current = setTimeout(async () => {
-      try {
-        const [foods, usda] = await Promise.all([
-          api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
-          api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
-        ])
-        setResults(foods)
-        setUsdaResults(usda)
-        setNoResults(foods.length === 0 && usda.length === 0)
-        setIsDropdownOpen(true)
-      } catch {
-        setResults([])
-        setUsdaResults([])
-      }
+      let foods: Food[] = []
+      let usda: UsdaFoodResult[] = []
+      try { foods = await api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`) } catch { /* ignore */ }
+      try { usda = await api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`) } catch { /* ignore */ }
+      setResults(foods)
+      setUsdaResults(usda)
+      setNoResults(foods.length === 0 && usda.length === 0)
+      setIsDropdownOpen(true)
     }, 300)
   }
 
