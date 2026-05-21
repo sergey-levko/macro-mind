@@ -37,6 +37,13 @@ class FoodController {
         return service.searchFoods(userId, search);
     }
 
+    @PutMapping("/{id}")
+    FoodResponse update(@RequestHeader("X-User-Id") UUID userId,
+                        @PathVariable UUID id,
+                        @Valid @RequestBody UpdateFoodRequest request) {
+        return service.updateFood(userId, id, request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@RequestHeader("X-User-Id") UUID userId,

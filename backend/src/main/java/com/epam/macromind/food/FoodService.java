@@ -1,5 +1,6 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.meal.MealItemRepository;
 import com.epam.macromind.user.UserNotFoundException;
 import com.epam.macromind.user.UserRepository;
 import org.springframework.stereotype.Service;
@@ -15,12 +16,14 @@ class FoodService {
     private final FoodRepository foodRepository;
     private final UserRepository userRepository;
     private final UsdaFoodClient usdaFoodClient;
+    private final MealItemRepository mealItemRepository;
 
     FoodService(FoodRepository foodRepository, UserRepository userRepository,
-                UsdaFoodClient usdaFoodClient) {
+                UsdaFoodClient usdaFoodClient, MealItemRepository mealItemRepository) {
         this.foodRepository = foodRepository;
         this.userRepository = userRepository;
         this.usdaFoodClient = usdaFoodClient;
+        this.mealItemRepository = mealItemRepository;
     }
 
     FoodResponse createFood(UUID userId, CreateFoodRequest request) {
@@ -43,11 +46,28 @@ class FoodService {
         return foods.stream().map(FoodResponse::from).toList();
     }
 
+    FoodResponse updateFood(UUID userId, UUID foodId, UpdateFoodRequest request) {
+        Food food = foodRepository.findById(foodId)
+                .orElseThrow(() -> new FoodNotFoundException(foodId));
+        if (!food.getUserId().equals(userId)) {
+            throw new FoodAccessDeniedException(foodId);
+        }
+        food.setName(request.name());
+        food.setCalories100g(request.calories100g());
+        food.setProteinG(request.proteinG());
+        food.setCarbsG(request.carbsG());
+        food.setFatG(request.fatG());
+        return FoodResponse.from(foodRepository.save(food));
+    }
+
     void deleteFood(UUID userId, UUID foodId) {
         Food food = foodRepository.findById(foodId)
                 .orElseThrow(() -> new FoodNotFoundException(foodId));
         if (!food.getUserId().equals(userId)) {
             throw new FoodAccessDeniedException(foodId);
+        }
+        if (mealItemRepository.existsByFoodId(foodId)) {
+            throw new FoodInUseException(foodId);
         }
         foodRepository.delete(food);
     }
