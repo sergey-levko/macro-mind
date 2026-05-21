@@ -18,19 +18,33 @@ Squash and merge a pull request, then pull the latest master branch.
    ```
    Use the **AskUserQuestion tool** to let the user select the PR to merge.
 
-2. **Squash and merge the PR**
+2. **Push any local changes to the PR branch**
+
+   Check for uncommitted changes and push them before merging:
+   ```bash
+   git status
+   ```
+   If there are staged or unstaged changes, commit and push them to the PR branch:
+   ```bash
+   git add <relevant files>
+   git commit -m "<message>"
+   git push origin <branch>
+   ```
+   If the working tree is clean, skip this step.
+
+3. **Squash and merge the PR**
 
    ```bash
    gh pr merge <number> --squash
    ```
 
-3. **Switch to master and pull**
+4. **Switch to master and pull**
 
    ```bash
    git checkout master && git pull origin master
    ```
 
-4. **Display summary**
+5. **Display summary**
 
    Show a short confirmation:
    - PR number and title that was merged
