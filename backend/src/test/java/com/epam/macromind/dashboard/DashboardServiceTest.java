@@ -42,7 +42,7 @@ class DashboardServiceTest {
         var food = food(new BigDecimal("200"), new BigDecimal("10"), new BigDecimal("20"), new BigDecimal("5"));
         var item = mealItem(food.getId(), new BigDecimal("100"));
         var log = mealLog(item);
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of(log));
         when(foodRepository.findById(food.getId())).thenReturn(Optional.of(food));
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.of(goal()));
@@ -57,7 +57,7 @@ class DashboardServiceTest {
 
     @Test
     void getDaily_noMeals_returnsZeroTotals() {
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of());
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.of(goal()));
 
@@ -69,7 +69,7 @@ class DashboardServiceTest {
 
     @Test
     void getDaily_noGoal_returnsNullTargets() {
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of());
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -85,7 +85,7 @@ class DashboardServiceTest {
         var log = mealLog(item);
 
         // Only first day has data
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of(log))
                 .thenReturn(List.of())
                 .thenReturn(List.of())
@@ -106,7 +106,7 @@ class DashboardServiceTest {
 
     @Test
     void getWeekly_noGoal_returnsNullWeeklyTargets() {
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of());
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -120,7 +120,7 @@ class DashboardServiceTest {
         var food = food(new BigDecimal("200"), new BigDecimal("10"), new BigDecimal("20"), new BigDecimal("5"));
         var item = mealItem(food.getId(), new BigDecimal("100"));
         var log = mealLog(item);
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of(log));
         when(foodRepository.findById(food.getId())).thenReturn(Optional.of(food));
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.of(goal()));
@@ -133,7 +133,7 @@ class DashboardServiceTest {
 
     @Test
     void getSummaryCard_noGoal_returnsNullTargetsAndPercentages() {
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(eq(USER_ID), any(), any()))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(eq(USER_ID), any(), any()))
                 .thenReturn(List.of());
         when(goalRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 

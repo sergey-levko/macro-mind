@@ -39,5 +39,6 @@ public class MealLog {
     public UUID getUserId() { return userId; }
     public MealType getMealType() { return mealType; }
     public Instant getLoggedAt() { return loggedAt; }
+    public void setLoggedAt(Instant loggedAt) { this.loggedAt = loggedAt; }
     public List<MealItem> getItems() { return items; }
 }

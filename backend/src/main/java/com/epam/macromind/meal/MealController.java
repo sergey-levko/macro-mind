@@ -37,6 +37,13 @@ class MealController {
         return service.getMealLogsByDate(userId, date);
     }
 
+    @PatchMapping("/{id}")
+    MealLogResponse update(@RequestHeader("X-User-Id") UUID userId,
+                           @PathVariable UUID id,
+                           @Valid @RequestBody UpdateMealLogRequest request) {
+        return service.updateMealLog(userId, id, request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@RequestHeader("X-User-Id") UUID userId, @PathVariable UUID id) {

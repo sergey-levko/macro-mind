@@ -54,7 +54,7 @@ class MealService {
     List<MealLogSummaryResponse> getMealLogsByDate(UUID userId, LocalDate date) {
         Instant start = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant end = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtBetween(userId, start, end);
+        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, start, end);
         Set<UUID> allFoodIds = logs.stream()
                 .flatMap(l -> l.getItems().stream())
                 .map(MealItem::getFoodId)
@@ -62,6 +62,17 @@ class MealService {
         Map<UUID, Food> foodMap = foodRepository.findAllById(allFoodIds)
                 .stream().collect(Collectors.toMap(Food::getId, f -> f));
         return logs.stream().map(l -> toSummary(l, foodMap)).toList();
+    }
+
+    MealLogResponse updateMealLog(UUID userId, UUID logId, UpdateMealLogRequest request) {
+        MealLog log = mealLogRepository.findById(logId)
+                .orElseThrow(() -> new MealLogNotFoundException(logId));
+        if (!log.getUserId().equals(userId)) {
+            throw new MealLogAccessDeniedException(logId);
+        }
+        log.setLoggedAt(request.loggedAt());
+        mealLogRepository.save(log);
+        return toResponse(log, loadFoodMap(log.getItems()));
     }
 
     void deleteMealLog(UUID userId, UUID logId) {

@@ -83,7 +83,7 @@ class MealServiceTest {
         LocalDate date = LocalDate.of(2024, 1, 15);
         Instant start = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant end = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        when(mealLogRepository.findByUserIdAndLoggedAtBetween(userId, start, end))
+        when(mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, start, end))
                 .thenReturn(List.of(log));
         when(foodRepository.findAllById(any())).thenReturn(List.of());
 
