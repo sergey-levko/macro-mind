@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: View selected date's meals grouped by meal type
 The system SHALL display the selected date's meal logs grouped by meal type (Breakfast, Lunch, Dinner, Snack).
