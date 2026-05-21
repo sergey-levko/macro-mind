@@ -53,6 +53,7 @@ function InsightContent({ content }: { content: string }) {
 
 export default function Coach() {
   const [tab, setTab] = useState<'chat' | 'insights'>('chat')
+  const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly'>('daily')
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -141,11 +142,9 @@ export default function Coach() {
     }
   }
 
-  const tabCls = (t: 'chat' | 'insights') =>
+  const pillCls = (active: boolean) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-      tab === t
-        ? 'bg-teal-600 text-white'
-        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+      active ? 'bg-teal-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
     }`
 
   return (
@@ -153,8 +152,8 @@ export default function Coach() {
       <div className="flex items-center gap-4">
         <h1 className="text-2xl font-bold text-white flex-1">Coach</h1>
         <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
-          <button className={tabCls('chat')} onClick={() => setTab('chat')}>Chat</button>
-          <button className={tabCls('insights')} onClick={() => setTab('insights')}>Insights</button>
+          <button className={pillCls(tab === 'chat')} onClick={() => setTab('chat')}>Chat</button>
+          <button className={pillCls(tab === 'insights')} onClick={() => setTab('insights')}>Insights</button>
         </div>
       </div>
 
@@ -223,7 +222,7 @@ export default function Coach() {
       )}
 
       {tab === 'insights' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {insightsNeedGoal && (
             <div className="bg-gray-900 rounded-2xl border border-amber-800/40 p-4">
               <p className="text-sm text-amber-400">
@@ -232,43 +231,42 @@ export default function Coach() {
             </div>
           )}
 
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h2 className="text-base font-semibold text-white mb-4">Daily Insights</h2>
-            {insightsLoading ? (
-              <p className="text-sm text-gray-500">Generating insights…</p>
-            ) : insightsError ? (
-              <p className="text-sm text-red-400">Could not load insights.</p>
-            ) : dailyInsights.length === 0 ? (
-              <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
-            ) : (
-              <div className="space-y-6">
-                {dailyInsights.slice(0, 3).map(insight => (
-                  <div key={insight.id}>
-                    <p className="text-xs text-gray-500 mb-2">{insight.periodStart}</p>
-                    <InsightContent content={insight.content} />
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-xl p-1 w-fit">
+            <button className={pillCls(insightPeriod === 'daily')} onClick={() => setInsightPeriod('daily')}>Daily</button>
+            <button className={pillCls(insightPeriod === 'weekly')} onClick={() => setInsightPeriod('weekly')}>Weekly</button>
           </div>
 
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h2 className="text-base font-semibold text-white mb-4">Weekly Insights</h2>
             {insightsLoading ? (
               <p className="text-sm text-gray-500">Generating insights…</p>
             ) : insightsError ? (
               <p className="text-sm text-red-400">Could not load insights.</p>
-            ) : weeklyInsights.length === 0 ? (
-              <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
+            ) : insightPeriod === 'daily' ? (
+              dailyInsights.length === 0 ? (
+                <p className="text-sm text-gray-500">No daily insights yet — log some meals to get started.</p>
+              ) : (
+                <div className="space-y-6">
+                  {dailyInsights.slice(0, 3).map(insight => (
+                    <div key={insight.id}>
+                      <p className="text-xs text-gray-500 mb-2">{insight.periodStart}</p>
+                      <InsightContent content={insight.content} />
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="space-y-6">
-                {weeklyInsights.slice(0, 2).map(insight => (
-                  <div key={insight.id}>
-                    <p className="text-xs text-gray-500 mb-2">Week of {insight.periodStart}</p>
-                    <InsightContent content={insight.content} />
-                  </div>
-                ))}
-              </div>
+              weeklyInsights.length === 0 ? (
+                <p className="text-sm text-gray-500">No weekly insights yet — log some meals to get started.</p>
+              ) : (
+                <div className="space-y-6">
+                  {weeklyInsights.slice(0, 2).map(insight => (
+                    <div key={insight.id}>
+                      <p className="text-xs text-gray-500 mb-2">Week of {insight.periodStart}</p>
+                      <InsightContent content={insight.content} />
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>
