@@ -41,7 +41,19 @@ const mdComponents: Record<string, any> = {
   code: ({ children }: { children: React.ReactNode }) => <code className="bg-gray-700 px-1 rounded text-xs font-mono">{children}</code>,
 }
 
+function InsightContent({ content }: { content: string }) {
+  return (
+    <div className="text-sm text-gray-300">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
 export default function Coach() {
+  const [tab, setTab] = useState<'chat' | 'insights'>('chat')
+
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -129,38 +141,39 @@ export default function Coach() {
     }
   }
 
-  function InsightContent({ content }: { content: string }) {
-    return (
-      <div className="text-sm text-gray-300">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-          {content}
-        </ReactMarkdown>
-      </div>
-    )
-  }
+  const tabCls = (t: 'chat' | 'insights') =>
+    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+      tab === t
+        ? 'bg-teal-600 text-white'
+        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+    }`
 
   return (
-    <div className="p-8 max-w-6xl space-y-6">
-      <h1 className="text-2xl font-bold text-white">Coach</h1>
+    <div className="p-8 max-w-4xl space-y-6">
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-bold text-white flex-1">Coach</h1>
+        <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+          <button className={tabCls('chat')} onClick={() => setTab('chat')}>Chat</button>
+          <button className={tabCls('insights')} onClick={() => setTab('insights')}>Insights</button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Chat Panel */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 flex flex-col" style={{ height: '600px' }}>
+      {tab === 'chat' && (
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '480px' }}>
           <div className="px-5 py-4 border-b border-gray-800">
-            <h2 className="text-sm font-semibold text-white">Ask your coach</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Ask anything about your nutrition</p>
+            <p className="text-xs text-gray-500">Ask anything about your nutrition — your recent meals are included as context.</p>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {messages.length === 0 && (
-              <p className="text-sm text-gray-500 text-center mt-8">
+              <p className="text-sm text-gray-500 text-center mt-12">
                 Start the conversation — ask about your macros, meal ideas, or nutrition goals.
               </p>
             )}
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
+                  className={`max-w-lg px-4 py-2.5 rounded-2xl text-sm ${
                     msg.role === 'user'
                       ? 'bg-teal-600 text-white rounded-br-sm'
                       : 'bg-gray-800 text-gray-200 rounded-bl-sm'
@@ -207,9 +220,10 @@ export default function Coach() {
             </div>
           </div>
         </div>
+      )}
 
-        {/* Insights Panel */}
-        <div className="space-y-4">
+      {tab === 'insights' && (
+        <div className="space-y-6">
           {insightsNeedGoal && (
             <div className="bg-gray-900 rounded-2xl border border-amber-800/40 p-4">
               <p className="text-sm text-amber-400">
@@ -218,8 +232,8 @@ export default function Coach() {
             </div>
           )}
 
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-            <h2 className="text-sm font-semibold text-white mb-3">Daily Insights</h2>
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <h2 className="text-base font-semibold text-white mb-4">Daily Insights</h2>
             {insightsLoading ? (
               <p className="text-sm text-gray-500">Generating insights…</p>
             ) : insightsError ? (
@@ -227,10 +241,10 @@ export default function Coach() {
             ) : dailyInsights.length === 0 ? (
               <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {dailyInsights.slice(0, 3).map(insight => (
-                  <div key={insight.id} className="space-y-1">
-                    <p className="text-xs text-gray-500">{insight.periodStart}</p>
+                  <div key={insight.id}>
+                    <p className="text-xs text-gray-500 mb-2">{insight.periodStart}</p>
                     <InsightContent content={insight.content} />
                   </div>
                 ))}
@@ -238,8 +252,8 @@ export default function Coach() {
             )}
           </div>
 
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-            <h2 className="text-sm font-semibold text-white mb-3">Weekly Insights</h2>
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <h2 className="text-base font-semibold text-white mb-4">Weekly Insights</h2>
             {insightsLoading ? (
               <p className="text-sm text-gray-500">Generating insights…</p>
             ) : insightsError ? (
@@ -247,10 +261,10 @@ export default function Coach() {
             ) : weeklyInsights.length === 0 ? (
               <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {weeklyInsights.slice(0, 2).map(insight => (
-                  <div key={insight.id} className="space-y-1">
-                    <p className="text-xs text-gray-500">Week of {insight.periodStart}</p>
+                  <div key={insight.id}>
+                    <p className="text-xs text-gray-500 mb-2">Week of {insight.periodStart}</p>
                     <InsightContent content={insight.content} />
                   </div>
                 ))}
@@ -258,7 +272,7 @@ export default function Coach() {
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
