@@ -3,7 +3,9 @@ package com.epam.macromind.goal;
 import com.epam.macromind.user.CreateUserRequest;
 import com.epam.macromind.user.GoalType;
 import com.epam.macromind.user.UserResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -12,6 +14,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -21,6 +24,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -35,11 +41,27 @@ class NutritionalGoalIntegrationTest {
         registry.add("usda.api.base-url", () -> "http://localhost:9999");
     }
 
+    @MockitoBean(name = "goalChatClient")
+    ChatClient chatClient;
+
     @LocalServerPort
     private int port;
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @BeforeEach
+    void setUpChatClient() {
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.entity(GoalSuggestionResponse.class)).thenReturn(
+                new GoalSuggestionResponse(
+                        new BigDecimal("2000"), new BigDecimal("150"),
+                        new BigDecimal("200"), new BigDecimal("70")));
+    }
 
     private String url(String path) {
         return "http://localhost:" + port + path;
@@ -115,6 +137,32 @@ class NutritionalGoalIntegrationTest {
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.DELETE,
                 new HttpEntity<>(headersFor(userId)), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void generateGoal_validUser_returns200WithNumericFields() {
+        UUID userId = createUser();
+
+        ResponseEntity<GoalSuggestionResponse> response = restTemplate.exchange(
+                url("/api/v1/nutritional-goals/generate"), HttpMethod.POST,
+                new HttpEntity<>(headersFor(userId)), GoalSuggestionResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().caloriesTarget()).isEqualByComparingTo("2000");
+        assertThat(response.getBody().proteinG()).isEqualByComparingTo("150");
+        assertThat(response.getBody().carbsG()).isEqualByComparingTo("200");
+        assertThat(response.getBody().fatG()).isEqualByComparingTo("70");
+    }
+
+    @Test
+    void generateGoal_unknownUser_returns404() {
+        UUID unknownId = UUID.randomUUID();
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/nutritional-goals/generate"), HttpMethod.POST,
+                new HttpEntity<>(headersFor(unknownId)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }

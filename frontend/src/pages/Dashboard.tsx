@@ -55,6 +55,8 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
     fatG: existing?.fatG?.toString() ?? '',
   })
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
 
   useEffect(() => {
     if (existing) {
@@ -66,6 +68,26 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
       })
     }
   }, [existing])
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setGenError(null)
+    try {
+      const s = await api.post<{ caloriesTarget: number; proteinG: number; carbsG: number; fatG: number }>(
+        '/api/v1/nutritional-goals/generate'
+      )
+      setForm({
+        caloriesTarget: String(s.caloriesTarget),
+        proteinG: String(s.proteinG),
+        carbsG: String(s.carbsG),
+        fatG: String(s.fatG),
+      })
+    } catch {
+      setGenError('Generation failed, please try again')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -134,7 +156,18 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
             <input type="number" className={inputCls} value={form.fatG}
               onChange={e => setForm(f => ({ ...f, fatG: e.target.value }))} required min={0} />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {generating ? 'Generating…' : 'Generate with AI'}
+            </button>
+            {genError && (
+              <p className="text-xs text-red-400 text-center">{genError}</p>
+            )}
             <button
               type="submit"
               disabled={saving}
