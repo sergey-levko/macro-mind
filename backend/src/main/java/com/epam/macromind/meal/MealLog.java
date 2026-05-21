@@ -29,7 +29,7 @@ public class MealLog {
 
     protected MealLog() {}
 
-    MealLog(UUID userId, MealType mealType, Instant loggedAt) {
+    public MealLog(UUID userId, MealType mealType, Instant loggedAt) {
         this.userId = userId;
         this.mealType = mealType;
         this.loggedAt = loggedAt;

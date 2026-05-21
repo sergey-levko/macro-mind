@@ -18,6 +18,6 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Write `DashboardServiceTest` (Mockito): daily with meals, daily no meals, daily no goal, weekly with partial data, weekly no goal, summary card with goal, summary card no goal
-- [ ] 4.2 Write `DashboardControllerTest` (`@WebMvcTest`): GET daily 200, GET daily 400 missing param, GET weekly 200, GET weekly 400 missing param, GET summary 200
-- [ ] 4.3 Write `DashboardIntegrationTest` (Testcontainers): create user + goal + meal logs → assert daily/weekly/summary return correct aggregated totals; assert summary with no goal returns null targets
+- [x] 4.1 Write `DashboardServiceTest` (Mockito): daily with meals, daily no meals, daily no goal, weekly with partial data, weekly no goal, summary card with goal, summary card no goal
+- [x] 4.2 Write `DashboardControllerTest` (`@WebMvcTest`): GET daily 200, GET daily 400 missing param, GET weekly 200, GET weekly 400 missing param, GET summary 200
+- [x] 4.3 Write `DashboardIntegrationTest` (Testcontainers): create user + goal + meal logs → assert daily/weekly/summary return correct aggregated totals; assert summary with no goal returns null targets
