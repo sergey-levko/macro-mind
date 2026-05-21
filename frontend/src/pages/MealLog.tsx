@@ -31,8 +31,7 @@ function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
   const [form, setForm] = useState({ name, calories100g: '', proteinG: '', carbsG: '', fatG: '' })
   const [saving, setSaving] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleCreate() {
     setSaving(true)
     try {
       const food = await api.post<Food>('/api/v1/foods', {
@@ -51,7 +50,7 @@ function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
   const inputCls = 'w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500'
 
   return (
-    <form onSubmit={handleSubmit} className="mt-2 p-3 bg-gray-750 border border-gray-600 rounded-lg space-y-2">
+    <div className="mt-2 p-3 bg-gray-750 border border-gray-600 rounded-lg space-y-2">
       <p className="text-xs font-medium text-teal-400">New food</p>
       <input className={inputCls} placeholder="Name" value={form.name}
         onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
@@ -78,7 +77,7 @@ function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
         </div>
       </div>
       <div className="flex gap-2">
-        <button type="submit" disabled={saving}
+        <button type="button" disabled={saving} onClick={handleCreate}
           className="flex-1 py-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-xs rounded transition-colors">
           {saving ? 'Creating…' : 'Create & select'}
         </button>
@@ -87,7 +86,7 @@ function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
           Cancel
         </button>
       </div>
-    </form>
+    </div>
   )
 }
 
