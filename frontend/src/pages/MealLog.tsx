@@ -112,12 +112,25 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [results, setResults] = useState<Food[]>([])
   const [usdaResults, setUsdaResults] = useState<UsdaFoodResult[]>([])
   const [noResults, setNoResults] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('')
   const [adding, setAdding] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [dropdownOpen])
 
   function handleQueryChange(v: string) {
     setQuery(v)
@@ -126,32 +139,32 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     setNoResults(false)
     setUsdaResults([])
     clearTimeout(debounceRef.current)
-    if (v.length < 2) { setResults([]); return }
+    if (v.length < 2) { setResults([]); setDropdownOpen(false); return }
+    setDropdownOpen(true)
     debounceRef.current = setTimeout(async () => {
-      try {
-        const [foods, usda] = await Promise.all([
-          api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
-          api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
-        ])
-        setResults(foods)
-        setUsdaResults(usda)
-        setNoResults(foods.length === 0 && usda.length === 0)
-      } catch {
-        setResults([])
-        setUsdaResults([])
-      }
+      const [foodsResult, usdaResult] = await Promise.allSettled([
+        api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
+        api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
+      ])
+      const foods = foodsResult.status === 'fulfilled' ? foodsResult.value : []
+      const usda = usdaResult.status === 'fulfilled' ? usdaResult.value : []
+      setResults(foods)
+      setUsdaResults(usda)
+      setNoResults(foods.length === 0 && usda.length === 0)
     }, 300)
   }
 
   async function handleImportUsda(u: UsdaFoodResult) {
     setImportingFdcId(u.fdcId)
+    setDropdownOpen(false)
+    setResults([])
+    setUsdaResults([])
+    setNoResults(false)
+    setQuery(u.description)
     try {
       const food = await api.post<Food>('/api/v1/foods/import', { fdcId: u.fdcId })
       setSelected(food)
       setQuery(food.name)
-      setResults([])
-      setUsdaResults([])
-      setNoResults(false)
       setShowCreate(false)
     } finally {
       setImportingFdcId(null)
@@ -165,6 +178,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     setUsdaResults([])
     setNoResults(false)
     setShowCreate(false)
+    setDropdownOpen(false)
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -182,6 +196,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
       setResults([])
       setNoResults(false)
       setShowCreate(false)
+      setDropdownOpen(false)
       onAdded()
     } finally {
       setAdding(false)
@@ -190,7 +205,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
 
   return (
     <form onSubmit={handleAdd} className="mt-3 pt-3 border-t border-gray-800 space-y-2">
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <input
           type="text"
           placeholder="Search foods…"
@@ -198,13 +213,13 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
           onChange={e => handleQueryChange(e.target.value)}
           className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
         />
-        {(results.length > 0 || usdaResults.length > 0 || noResults) && !selected && !showCreate && (
+        {dropdownOpen && (results.length > 0 || usdaResults.length > 0 || noResults) && !showCreate && (
           <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg max-h-52 overflow-y-auto">
             {results.map(f => (
               <li key={f.id}>
                 <button
                   type="button"
-                  onClick={() => { setSelected(f); setResults([]); setUsdaResults([]); setNoResults(false); setQuery(f.name) }}
+                  onClick={() => { setSelected(f); setResults([]); setUsdaResults([]); setNoResults(false); setQuery(f.name); setDropdownOpen(false) }}
                   className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
                 >
                   {f.name}
@@ -537,6 +552,13 @@ export default function MealLog() {
     }
   }, [selectedDate])
 
+  const refreshLogs = useCallback(async () => {
+    try {
+      const data = await api.get<MealLogSummary[]>(`/api/v1/meal-logs?date=${selectedDate}`)
+      setLogs(data)
+    } catch { /* ignore */ }
+  }, [selectedDate])
+
   useEffect(() => { loadLogs() }, [loadLogs])
 
   const byType = (type: MealType) => logs.filter(l => l.mealType === type)
@@ -580,7 +602,7 @@ export default function MealLog() {
             selectedDate={selectedDate}
             onCreated={loadLogs}
             onDeleted={loadLogs}
-            onItemChanged={loadLogs}
+            onItemChanged={refreshLogs}
           />
         ))
       )}

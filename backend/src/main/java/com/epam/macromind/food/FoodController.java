@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import static java.util.Collections.emptyList;
+
 @RestController
 @RequestMapping("/api/v1/foods")
 class FoodController {
@@ -45,7 +47,11 @@ class FoodController {
     @GetMapping("/usda-search")
     List<UsdaFoodResult> searchUsda(@RequestHeader("X-User-Id") UUID userId,
                                     @RequestParam String q) {
-        return service.searchUsda(userId, q);
+        try {
+            return service.searchUsda(userId, q);
+        } catch (UsdaServiceUnavailableException e) {
+            return emptyList();
+        }
     }
 
     @PostMapping("/import")

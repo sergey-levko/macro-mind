@@ -72,4 +72,32 @@ class UserServiceTest {
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessageContaining(id.toString());
     }
+
+    private static final UpdateUserRequest UPDATE_REQUEST = new UpdateUserRequest(
+            "Alice Updated", 31, new BigDecimal("63.0"), new BigDecimal("170.0"), GoalType.LOSE_WEIGHT);
+
+    @Test
+    void updateUser_success_returnsUpdatedResponse() {
+        UUID id = UUID.randomUUID();
+        User existing = new User("Alice", "alice@example.com", 30,
+                new BigDecimal("65.0"), new BigDecimal("170.0"), GoalType.MAINTAIN_WEIGHT);
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        UserResponse response = service.updateUser(id, UPDATE_REQUEST);
+
+        assertThat(response.name()).isEqualTo("Alice Updated");
+        assertThat(response.age()).isEqualTo(31);
+        assertThat(response.goalType()).isEqualTo(GoalType.LOSE_WEIGHT);
+    }
+
+    @Test
+    void updateUser_unknownId_throwsUserNotFoundException() {
+        UUID id = UUID.randomUUID();
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateUser(id, UPDATE_REQUEST))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining(id.toString());
+    }
 }

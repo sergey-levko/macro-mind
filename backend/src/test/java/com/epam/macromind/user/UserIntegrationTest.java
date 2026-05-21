@@ -6,6 +6,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -80,5 +82,57 @@ class UserIntegrationTest {
                 url("/api/v1/users/" + UUID.randomUUID()), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void updateUser_success_returns200WithUpdatedValues() {
+        CreateUserRequest create = new CreateUserRequest(
+                "Eve", "eve@example.com", 22,
+                new BigDecimal("55.0"), new BigDecimal("160.0"), GoalType.MAINTAIN_WEIGHT);
+        UUID id = restTemplate.postForEntity(url("/api/v1/users"), create, UserResponse.class)
+                .getBody().id();
+
+        UpdateUserRequest update = new UpdateUserRequest(
+                "Eve Updated", 23, new BigDecimal("54.0"), new BigDecimal("160.0"), GoalType.LOSE_WEIGHT);
+
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/v1/users/" + id), HttpMethod.PUT,
+                new HttpEntity<>(update), UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().name()).isEqualTo("Eve Updated");
+        assertThat(response.getBody().age()).isEqualTo(23);
+        assertThat(response.getBody().goalType()).isEqualTo(GoalType.LOSE_WEIGHT);
+        assertThat(response.getBody().email()).isEqualTo("eve@example.com");
+    }
+
+    @Test
+    void updateUser_unknownId_returns404() {
+        UpdateUserRequest update = new UpdateUserRequest(
+                "Ghost", 25, new BigDecimal("70.0"), new BigDecimal("175.0"), GoalType.GAIN_MUSCLE);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/users/" + UUID.randomUUID()), HttpMethod.PUT,
+                new HttpEntity<>(update), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void updateUser_missingRequiredField_returns400() {
+        CreateUserRequest create = new CreateUserRequest(
+                "Frank", "frank@example.com", 40,
+                new BigDecimal("85.0"), new BigDecimal("178.0"), GoalType.GAIN_MUSCLE);
+        UUID id = restTemplate.postForEntity(url("/api/v1/users"), create, UserResponse.class)
+                .getBody().id();
+
+        UpdateUserRequest invalid = new UpdateUserRequest(
+                "", 40, new BigDecimal("85.0"), new BigDecimal("178.0"), GoalType.GAIN_MUSCLE);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/users/" + id), HttpMethod.PUT,
+                new HttpEntity<>(invalid), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }
