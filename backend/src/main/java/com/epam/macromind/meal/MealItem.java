@@ -24,7 +24,7 @@ public class MealItem {
 
     protected MealItem() {}
 
-    MealItem(MealLog mealLog, UUID foodId, BigDecimal quantityG) {
+    public MealItem(MealLog mealLog, UUID foodId, BigDecimal quantityG) {
         this.mealLog = mealLog;
         this.foodId = foodId;
         this.quantityG = quantityG;

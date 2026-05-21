@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-record MealLogResponse(
+public record MealLogResponse(
         UUID id,
         UUID userId,
         MealType mealType,
