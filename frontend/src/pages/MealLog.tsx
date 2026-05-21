@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { DayPicker } from 'react-day-picker'
 import { api } from '../lib/api'
 import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
 
@@ -12,6 +13,22 @@ const MEAL_LABELS: Record<MealType, string> = {
 
 function todayIso(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+function shiftDay(iso: string, delta: number): string {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() + delta)
+  return d.toISOString().split('T')[0]
+}
+
+function formatDateLabel(iso: string): string {
+  const today = todayIso()
+  const yesterday = shiftDay(today, -1)
+  const d = new Date(iso + 'T12:00:00')
+  const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  if (iso === today) return `Today, ${dateStr}`
+  if (iso === yesterday) return `Yesterday, ${dateStr}`
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 // ─── Food Item Form ───────────────────────────────────────────────────────────
@@ -100,7 +117,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [adding, setAdding] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   function handleQueryChange(v: string) {
     setQuery(v)
@@ -380,12 +397,13 @@ function MealLogCard({ log, onDeleted, onItemChanged }: MealLogCardProps) {
 interface MealSectionProps {
   type: MealType
   logs: MealLogSummary[]
+  selectedDate: string
   onCreated: () => void
   onDeleted: () => void
   onItemChanged: () => void
 }
 
-function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
+function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
   const [creating, setCreating] = useState(false)
 
   async function addMeal() {
@@ -393,7 +411,7 @@ function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSe
     try {
       await api.post('/api/v1/meal-logs', {
         mealType: type,
-        loggedAt: new Date().toISOString(),
+        loggedAt: new Date(selectedDate + 'T00:00:00.000Z').toISOString(),
       })
       onCreated()
     } finally {
@@ -431,48 +449,141 @@ function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSe
   )
 }
 
+// ─── Date Picker Popover ──────────────────────────────────────────────────────
+
+function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect: (iso: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+        title="Pick a date"
+      >
+        📅
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50">
+          <DayPicker
+            mode="single"
+            ISOWeek
+            selected={new Date(selected + 'T12:00:00')}
+            defaultMonth={new Date(selected + 'T12:00:00')}
+            onSelect={date => {
+              if (date) {
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                onSelect(`${y}-${m}-${d}`)
+                setOpen(false)
+              }
+            }}
+            disabled={{ after: new Date() }}
+            classNames={{
+              root: 'p-4 bg-gray-900 rounded-xl border border-gray-700 shadow-2xl select-none',
+              months: 'relative',
+              month_caption: 'flex justify-center items-center h-8 mb-2',
+              caption_label: 'text-sm font-semibold text-white',
+              nav: 'absolute top-0 flex w-full justify-between',
+              button_previous: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+              button_next: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+              chevron: 'fill-current',
+              month_grid: 'w-full',
+              weekdays: 'flex',
+              weekday: 'w-9 h-7 text-center text-xs text-gray-500 font-normal',
+              weeks: 'mt-1',
+              week: 'flex',
+              day: 'p-0 w-9',
+              day_button: 'w-9 h-9 text-sm text-gray-300 hover:bg-gray-700 rounded-full transition-colors',
+              today: 'text-teal-400 font-semibold',
+              selected: '!bg-teal-600 !text-white rounded-full',
+              disabled: 'opacity-25 cursor-not-allowed',
+              outside: 'opacity-0 pointer-events-none',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Meal Log Page ────────────────────────────────────────────────────────────
 
 export default function MealLog() {
+  const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadLogs = useCallback(async () => {
+    setLoading(true)
     try {
-      const data = await api.get<MealLogSummary[]>(`/api/v1/meal-logs?date=${todayIso()}`)
+      const data = await api.get<MealLogSummary[]>(`/api/v1/meal-logs?date=${selectedDate}`)
       setLogs(data)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
   const byType = (type: MealType) => logs.filter(l => l.mealType === type)
-
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-64">
-        <div className="text-gray-400">Loading…</div>
-      </div>
-    )
-  }
+  const isToday = selectedDate === todayIso()
 
   return (
     <div className="p-8 space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white">
-        Meal Log — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-      </h1>
-      {MEAL_TYPES.map(type => (
-        <MealSection
-          key={type}
-          type={type}
-          logs={byType(type)}
-          onCreated={loadLogs}
-          onDeleted={loadLogs}
-          onItemChanged={loadLogs}
-        />
-      ))}
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-bold text-white flex-1">
+          Meal Log — {formatDateLabel(selectedDate)}
+        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedDate(d => shiftDay(d, -1))}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            title="Previous day"
+          >
+            ‹
+          </button>
+          <DatePickerPopover selected={selectedDate} onSelect={setSelectedDate} />
+          <button
+            onClick={() => setSelectedDate(d => shiftDay(d, 1))}
+            disabled={isToday}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            title="Next day"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-gray-400">Loading…</div>
+        </div>
+      ) : (
+        MEAL_TYPES.map(type => (
+          <MealSection
+            key={type}
+            type={type}
+            logs={byType(type)}
+            selectedDate={selectedDate}
+            onCreated={loadLogs}
+            onDeleted={loadLogs}
+            onItemChanged={loadLogs}
+          />
+        ))
+      )}
     </div>
   )
 }

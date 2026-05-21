@@ -1,14 +1,14 @@
 ## ADDED Requirements
 
-### Requirement: View today's meals grouped by meal type
-The system SHALL display the current day's meal logs grouped by meal type (Breakfast, Lunch, Dinner, Snack).
+### Requirement: View selected date's meals grouped by meal type
+The system SHALL display the selected date's meal logs grouped by meal type (Breakfast, Lunch, Dinner, Snack).
 
 #### Scenario: Meals load on page mount
 - **WHEN** the user navigates to `/meal-log`
-- **THEN** the page calls `GET /api/v1/meal-logs?date=<today>` and renders each meal log under its corresponding meal type section
+- **THEN** the page calls `GET /api/v1/meal-logs?date=<selected-date>` and renders each meal log under its corresponding meal type section
 
 #### Scenario: Empty meal type section shows add prompt
-- **WHEN** a meal type has no logs for the day
+- **WHEN** a meal type has no logs for the selected date
 - **THEN** the section renders an empty state with an "Add meal" button
 
 #### Scenario: Meal log shows macro totals
@@ -20,7 +20,7 @@ The system SHALL allow the user to create a new meal log for a given meal type a
 
 #### Scenario: Adding a meal log creates it via API
 - **WHEN** the user clicks "Add meal" in a meal type section
-- **THEN** the app calls `POST /api/v1/meal-logs` with `mealType` set to that section's type and `loggedAt` set to the current UTC time, and the new log appears in the section
+- **THEN** the app calls `POST /api/v1/meal-logs` with `mealType` set to that section's type and `loggedAt` set to midnight UTC of the selected date, and the new log appears in the section
 
 #### Scenario: Deleting a meal log removes it from the view
 - **WHEN** the user clicks the delete button on a meal log and confirms
