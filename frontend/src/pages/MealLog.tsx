@@ -479,11 +479,16 @@ function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect:
         <div className="absolute right-0 top-full mt-1 z-50">
           <DayPicker
             mode="single"
+            weekStartsOn={1}
+            showOutsideDays={false}
             selected={new Date(selected + 'T12:00:00')}
             defaultMonth={new Date(selected + 'T12:00:00')}
             onSelect={date => {
               if (date) {
-                onSelect(date.toISOString().split('T')[0])
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                onSelect(`${y}-${m}-${d}`)
                 setOpen(false)
               }
             }}
