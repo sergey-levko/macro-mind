@@ -29,4 +29,12 @@ class UserService {
                 .map(UserResponse::from)
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
+
+    UserResponse updateUser(UUID id, UpdateUserRequest request) {
+        User user = repository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+        user.update(request.name(), request.age(), request.weightKg(),
+                request.heightCm(), request.goalType());
+        return UserResponse.from(repository.save(user));
+    }
 }

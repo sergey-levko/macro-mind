@@ -41,6 +41,14 @@ public class User {
         this.goalType = goalType;
     }
 
+    void update(String name, Integer age, BigDecimal weightKg, BigDecimal heightCm, GoalType goalType) {
+        this.name = name;
+        this.age = age;
+        this.weightKg = weightKg;
+        this.heightCm = heightCm;
+        this.goalType = goalType;
+    }
+
     public UUID getId() { return id; }
     public String getEmail() { return email; }
     public String getName() { return name; }

@@ -26,4 +26,9 @@ class UserController {
     UserResponse getById(@PathVariable UUID id) {
         return service.getUserById(id);
     }
+
+    @PutMapping("/{id}")
+    UserResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request) {
+        return service.updateUser(id, request);
+    }
 }
