@@ -42,6 +42,12 @@ class FoodController {
         service.deleteFood(userId, id);
     }
 
+    @GetMapping("/usda-search")
+    List<UsdaFoodResult> searchUsda(@RequestHeader("X-User-Id") UUID userId,
+                                    @RequestParam String q) {
+        return service.searchUsda(userId, q);
+    }
+
     @PostMapping("/import")
     @ResponseStatus(HttpStatus.CREATED)
     FoodResponse importFood(@RequestHeader("X-User-Id") UUID userId,

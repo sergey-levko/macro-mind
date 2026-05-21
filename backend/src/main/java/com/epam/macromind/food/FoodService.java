@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+
 @Service
 class FoodService {
 
@@ -49,6 +50,11 @@ class FoodService {
             throw new FoodAccessDeniedException(foodId);
         }
         foodRepository.delete(food);
+    }
+
+    List<UsdaFoodResult> searchUsda(UUID userId, String query) {
+        validateUserExists(userId);
+        return usdaFoodClient.search(query);
     }
 
     FoodResponse importFood(UUID userId, ImportFoodRequest request) {

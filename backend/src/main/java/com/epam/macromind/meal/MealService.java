@@ -130,7 +130,7 @@ class MealService {
         String name = food != null ? food.getName() : "";
         MacroTotals macros = computeMacros(qty, food);
         return new MealItemResponse(item.getId(), item.getFoodId(), name, qty,
-                macros.calories(), macros.proteinG(), macros.carbsG(), macros.fatG());
+                macros.caloriesKcal(), macros.proteinG(), macros.carbsG(), macros.fatG());
     }
 
     private MacroTotals computeMacros(BigDecimal quantityG, Food food) {

@@ -3,7 +3,7 @@ package com.epam.macromind.meal;
 import java.math.BigDecimal;
 
 record MacroTotals(
-        BigDecimal calories,
+        BigDecimal caloriesKcal,
         BigDecimal proteinG,
         BigDecimal carbsG,
         BigDecimal fatG
@@ -13,7 +13,7 @@ record MacroTotals(
 
     MacroTotals add(MacroTotals other) {
         return new MacroTotals(
-                calories.add(other.calories),
+                caloriesKcal.add(other.caloriesKcal),
                 proteinG.add(other.proteinG),
                 carbsG.add(other.carbsG),
                 fatG.add(other.fatG));
