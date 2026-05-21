@@ -14,6 +14,22 @@ function todayIso(): string {
   return new Date().toISOString().split('T')[0]
 }
 
+function shiftDay(iso: string, delta: number): string {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() + delta)
+  return d.toISOString().split('T')[0]
+}
+
+function formatDateLabel(iso: string): string {
+  const today = todayIso()
+  const yesterday = shiftDay(today, -1)
+  const d = new Date(iso + 'T12:00:00')
+  const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  if (iso === today) return `Today, ${dateStr}`
+  if (iso === yesterday) return `Yesterday, ${dateStr}`
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 // ─── Food Item Form ───────────────────────────────────────────────────────────
 
 interface FoodItemFormProps {
@@ -380,12 +396,13 @@ function MealLogCard({ log, onDeleted, onItemChanged }: MealLogCardProps) {
 interface MealSectionProps {
   type: MealType
   logs: MealLogSummary[]
+  selectedDate: string
   onCreated: () => void
   onDeleted: () => void
   onItemChanged: () => void
 }
 
-function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
+function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
   const [creating, setCreating] = useState(false)
 
   async function addMeal() {
@@ -393,7 +410,7 @@ function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSe
     try {
       await api.post('/api/v1/meal-logs', {
         mealType: type,
-        loggedAt: new Date().toISOString(),
+        loggedAt: new Date(selectedDate + 'T00:00:00.000Z').toISOString(),
       })
       onCreated()
     } finally {
@@ -434,45 +451,66 @@ function MealSection({ type, logs, onCreated, onDeleted, onItemChanged }: MealSe
 // ─── Meal Log Page ────────────────────────────────────────────────────────────
 
 export default function MealLog() {
+  const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadLogs = useCallback(async () => {
+    setLoading(true)
     try {
-      const data = await api.get<MealLogSummary[]>(`/api/v1/meal-logs?date=${todayIso()}`)
+      const data = await api.get<MealLogSummary[]>(`/api/v1/meal-logs?date=${selectedDate}`)
       setLogs(data)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
   const byType = (type: MealType) => logs.filter(l => l.mealType === type)
-
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-64">
-        <div className="text-gray-400">Loading…</div>
-      </div>
-    )
-  }
+  const isToday = selectedDate === todayIso()
 
   return (
     <div className="p-8 space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white">
-        Meal Log — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-      </h1>
-      {MEAL_TYPES.map(type => (
-        <MealSection
-          key={type}
-          type={type}
-          logs={byType(type)}
-          onCreated={loadLogs}
-          onDeleted={loadLogs}
-          onItemChanged={loadLogs}
-        />
-      ))}
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-bold text-white flex-1">
+          Meal Log — {formatDateLabel(selectedDate)}
+        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedDate(d => shiftDay(d, -1))}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            title="Previous day"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => setSelectedDate(d => shiftDay(d, 1))}
+            disabled={isToday}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            title="Next day"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-gray-400">Loading…</div>
+        </div>
+      ) : (
+        MEAL_TYPES.map(type => (
+          <MealSection
+            key={type}
+            type={type}
+            logs={byType(type)}
+            selectedDate={selectedDate}
+            onCreated={loadLogs}
+            onDeleted={loadLogs}
+            onItemChanged={loadLogs}
+          />
+        ))
+      )}
     </div>
   )
 }
