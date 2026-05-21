@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '../lib/api'
-import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse } from '../lib/types'
+import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
 
 const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -93,11 +93,13 @@ function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
 function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Food[]>([])
+  const [usdaResults, setUsdaResults] = useState<UsdaFoodResult[]>([])
   const [noResults, setNoResults] = useState(false)
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('')
   const [adding, setAdding] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   function handleQueryChange(v: string) {
@@ -105,23 +107,45 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     setSelected(null)
     setShowCreate(false)
     setNoResults(false)
+    setUsdaResults([])
     clearTimeout(debounceRef.current)
     if (v.length < 2) { setResults([]); return }
     debounceRef.current = setTimeout(async () => {
       try {
-        const foods = await api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`)
+        const [foods, usda] = await Promise.all([
+          api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
+          api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
+        ])
         setResults(foods)
-        setNoResults(foods.length === 0)
+        setUsdaResults(usda)
+        setNoResults(foods.length === 0 && usda.length === 0)
       } catch {
         setResults([])
+        setUsdaResults([])
       }
     }, 300)
+  }
+
+  async function handleImportUsda(u: UsdaFoodResult) {
+    setImportingFdcId(u.fdcId)
+    try {
+      const food = await api.post<Food>('/api/v1/foods/import', { fdcId: u.fdcId })
+      setSelected(food)
+      setQuery(food.name)
+      setResults([])
+      setUsdaResults([])
+      setNoResults(false)
+      setShowCreate(false)
+    } finally {
+      setImportingFdcId(null)
+    }
   }
 
   function handleFoodCreated(food: Food) {
     setSelected(food)
     setQuery(food.name)
     setResults([])
+    setUsdaResults([])
     setNoResults(false)
     setShowCreate(false)
   }
@@ -157,13 +181,13 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
           onChange={e => handleQueryChange(e.target.value)}
           className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
         />
-        {results.length > 0 && !selected && (
-          <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg max-h-40 overflow-y-auto">
+        {(results.length > 0 || usdaResults.length > 0 || noResults) && !selected && !showCreate && (
+          <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg max-h-52 overflow-y-auto">
             {results.map(f => (
               <li key={f.id}>
                 <button
                   type="button"
-                  onClick={() => { setSelected(f); setResults([]); setNoResults(false); setQuery(f.name) }}
+                  onClick={() => { setSelected(f); setResults([]); setUsdaResults([]); setNoResults(false); setQuery(f.name) }}
                   className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
                 >
                   {f.name}
@@ -171,16 +195,36 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
                 </button>
               </li>
             ))}
+            {usdaResults.length > 0 && (
+              <>
+                <li className="px-3 py-1 text-xs text-gray-500 bg-gray-900 border-t border-gray-700">
+                  USDA FoodData Central
+                </li>
+                {usdaResults.map(u => (
+                  <li key={u.fdcId}>
+                    <button
+                      type="button"
+                      disabled={importingFdcId === u.fdcId}
+                      onClick={() => handleImportUsda(u)}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center justify-between disabled:opacity-60"
+                    >
+                      <span>{importingFdcId === u.fdcId ? 'Importing…' : u.description}</span>
+                      <span className="text-xs text-teal-400 ml-2 shrink-0">USDA</span>
+                    </button>
+                  </li>
+                ))}
+              </>
+            )}
+            <li className="border-t border-gray-700">
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                className="w-full text-left px-3 py-2 text-xs text-teal-400 hover:bg-gray-700"
+              >
+                + Create "{query}" manually
+              </button>
+            </li>
           </ul>
-        )}
-        {noResults && !selected && !showCreate && (
-          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-            <span className="text-xs text-gray-400">No foods found. </span>
-            <button type="button" onClick={() => setShowCreate(true)}
-              className="text-xs text-teal-400 hover:text-teal-300 underline">
-              Create "{query}"
-            </button>
-          </div>
         )}
       </div>
       {showCreate && (

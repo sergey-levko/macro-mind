@@ -105,3 +105,8 @@ export interface Food {
   carbsG: number
   fatG: number
 }
+
+export interface UsdaFoodResult {
+  fdcId: number
+  description: string
+}
