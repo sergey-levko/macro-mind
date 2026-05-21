@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../lib/api'
+import { useToast } from '../components/Toast'
 import type { SummaryCard, WeeklySummary, NutritionalGoal } from '../lib/types'
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ interface GoalFormProps {
 }
 
 function GoalForm({ existing, onSaved }: GoalFormProps) {
+  const { showToast } = useToast()
   const [open, setOpen] = useState(!existing)
   const [form, setForm] = useState({
     caloriesTarget: existing?.caloriesTarget?.toString() ?? '',
@@ -56,7 +58,6 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
   })
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [genError, setGenError] = useState<string | null>(null)
 
   useEffect(() => {
     if (existing) {
@@ -71,7 +72,6 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
 
   async function handleGenerate() {
     setGenerating(true)
-    setGenError(null)
     try {
       const s = await api.post<{ caloriesTarget: number; proteinG: number; carbsG: number; fatG: number }>(
         '/api/v1/nutritional-goals/generate'
@@ -83,7 +83,7 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
         fatG: String(s.fatG),
       })
     } catch {
-      setGenError('Generation failed, please try again')
+      showToast('Generation failed, please try again')
     } finally {
       setGenerating(false)
     }
@@ -101,6 +101,8 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
       })
       setOpen(false)
       onSaved()
+    } catch {
+      showToast('Failed to save goal, please try again')
     } finally {
       setSaving(false)
     }
@@ -165,9 +167,6 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
             >
               {generating ? 'Generating…' : 'Generate with AI'}
             </button>
-            {genError && (
-              <p className="text-xs text-red-400 text-center">{genError}</p>
-            )}
             <button
               type="submit"
               disabled={saving}

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { UserProvider, useUser } from './context/UserContext'
 import Layout from './components/Layout'
+import { ToastProvider } from './components/Toast'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
@@ -28,7 +29,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <UserProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </UserProvider>
     </BrowserRouter>
   )

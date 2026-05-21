@@ -56,18 +56,17 @@ class NutritionalGoalServiceTest {
     }
 
     @Test
-    void setGoal_replacesExistingGoal() {
+    void setGoal_updatesExistingGoal() {
         UUID userId = UUID.randomUUID();
         NutritionalGoal existing = goal(userId);
         when(userRepository.existsById(userId)).thenReturn(true);
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
-        NutritionalGoal saved = goal(userId);
-        when(goalRepository.save(any())).thenReturn(saved);
 
-        service.setGoal(userId, SAMPLE_REQUEST);
+        NutritionalGoalResponse result = service.setGoal(userId, SAMPLE_REQUEST);
 
-        verify(goalRepository).delete(existing);
-        verify(goalRepository).save(any());
+        assertThat(result.caloriesTarget()).isEqualByComparingTo("2000");
+        verify(goalRepository, never()).delete(any());
+        verify(goalRepository, never()).save(any());
     }
 
     @Test

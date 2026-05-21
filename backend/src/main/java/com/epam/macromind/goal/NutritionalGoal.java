@@ -38,6 +38,13 @@ public class NutritionalGoal {
         this.fatG = fatG;
     }
 
+    void update(BigDecimal caloriesTarget, BigDecimal proteinG, BigDecimal carbsG, BigDecimal fatG) {
+        this.caloriesTarget = caloriesTarget;
+        this.proteinG = proteinG;
+        this.carbsG = carbsG;
+        this.fatG = fatG;
+    }
+
     public UUID getId() { return id; }
     public UUID getUserId() { return userId; }
     public BigDecimal getCaloriesTarget() { return caloriesTarget; }

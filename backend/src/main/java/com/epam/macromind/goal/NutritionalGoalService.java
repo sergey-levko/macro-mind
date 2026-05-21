@@ -30,10 +30,15 @@ class NutritionalGoalService {
         if (!userRepository.existsById(userId)) {
             throw new UserNotFoundException(userId);
         }
-        goalRepository.findByUserId(userId).ifPresent(goalRepository::delete);
-        NutritionalGoal goal = goalRepository.save(new NutritionalGoal(
-                userId, request.caloriesTarget(), request.proteinG(),
-                request.carbsG(), request.fatG()));
+        NutritionalGoal goal = goalRepository.findByUserId(userId)
+                .map(existing -> {
+                    existing.update(request.caloriesTarget(), request.proteinG(),
+                            request.carbsG(), request.fatG());
+                    return existing;
+                })
+                .orElseGet(() -> goalRepository.save(new NutritionalGoal(
+                        userId, request.caloriesTarget(), request.proteinG(),
+                        request.carbsG(), request.fatG())));
         return toResponse(goal);
     }
 
