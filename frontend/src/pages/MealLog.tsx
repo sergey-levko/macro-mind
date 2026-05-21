@@ -21,27 +21,110 @@ interface FoodItemFormProps {
   onAdded: () => void
 }
 
+interface CreateFoodFormProps {
+  name: string
+  onCreated: (food: Food) => void
+  onCancel: () => void
+}
+
+function CreateFoodForm({ name, onCreated, onCancel }: CreateFoodFormProps) {
+  const [form, setForm] = useState({ name, calories100g: '', proteinG: '', carbsG: '', fatG: '' })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const food = await api.post<Food>('/api/v1/foods', {
+        name: form.name.trim(),
+        calories100g: Number(form.calories100g),
+        proteinG: Number(form.proteinG),
+        carbsG: Number(form.carbsG),
+        fatG: Number(form.fatG),
+      })
+      onCreated(food)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputCls = 'w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500'
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-2 p-3 bg-gray-750 border border-gray-600 rounded-lg space-y-2">
+      <p className="text-xs font-medium text-teal-400">New food</p>
+      <input className={inputCls} placeholder="Name" value={form.name}
+        onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Calories / 100g</label>
+          <input type="number" className={inputCls} placeholder="0" min={0} value={form.calories100g}
+            onChange={e => setForm(f => ({ ...f, calories100g: e.target.value }))} required />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Protein (g)</label>
+          <input type="number" className={inputCls} placeholder="0" min={0} value={form.proteinG}
+            onChange={e => setForm(f => ({ ...f, proteinG: e.target.value }))} required />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Carbs (g)</label>
+          <input type="number" className={inputCls} placeholder="0" min={0} value={form.carbsG}
+            onChange={e => setForm(f => ({ ...f, carbsG: e.target.value }))} required />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Fat (g)</label>
+          <input type="number" className={inputCls} placeholder="0" min={0} value={form.fatG}
+            onChange={e => setForm(f => ({ ...f, fatG: e.target.value }))} required />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button type="submit" disabled={saving}
+          className="flex-1 py-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-xs rounded transition-colors">
+          {saving ? 'Creating…' : 'Create & select'}
+        </button>
+        <button type="button" onClick={onCancel}
+          className="px-3 py-1 text-gray-400 hover:text-gray-200 text-xs">
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Food[]>([])
+  const [noResults, setNoResults] = useState(false)
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('')
   const [adding, setAdding] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   function handleQueryChange(v: string) {
     setQuery(v)
     setSelected(null)
+    setShowCreate(false)
+    setNoResults(false)
     clearTimeout(debounceRef.current)
     if (v.length < 2) { setResults([]); return }
     debounceRef.current = setTimeout(async () => {
       try {
         const foods = await api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`)
         setResults(foods)
+        setNoResults(foods.length === 0)
       } catch {
         setResults([])
       }
     }, 300)
+  }
+
+  function handleFoodCreated(food: Food) {
+    setSelected(food)
+    setQuery(food.name)
+    setResults([])
+    setNoResults(false)
+    setShowCreate(false)
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -57,6 +140,8 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
       setSelected(null)
       setQuantity('')
       setResults([])
+      setNoResults(false)
+      setShowCreate(false)
       onAdded()
     } finally {
       setAdding(false)
@@ -79,7 +164,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
               <li key={f.id}>
                 <button
                   type="button"
-                  onClick={() => { setSelected(f); setResults([]); setQuery(f.name) }}
+                  onClick={() => { setSelected(f); setResults([]); setNoResults(false); setQuery(f.name) }}
                   className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
                 >
                   {f.name}
@@ -89,7 +174,23 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
             ))}
           </ul>
         )}
+        {noResults && !selected && !showCreate && (
+          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+            <span className="text-xs text-gray-400">No foods found. </span>
+            <button type="button" onClick={() => setShowCreate(true)}
+              className="text-xs text-teal-400 hover:text-teal-300 underline">
+              Create "{query}"
+            </button>
+          </div>
+        )}
       </div>
+      {showCreate && (
+        <CreateFoodForm
+          name={query}
+          onCreated={handleFoodCreated}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
       <div className="flex gap-2">
         <input
           type="number"
