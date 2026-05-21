@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
 import Profile from './pages/Profile'
 import Foods from './pages/Foods'
+import Coach from './pages/Coach'
 
 function AppRoutes() {
   const { userId } = useUser()
@@ -22,6 +23,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="meal-log" element={<MealLog />} />
         <Route path="foods" element={<Foods />} />
+        <Route path="coach" element={<Coach />} />
         <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
