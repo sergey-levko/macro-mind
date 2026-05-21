@@ -35,4 +35,10 @@ class NutritionalGoalController {
         service.deleteGoal(userId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/generate")
+    ResponseEntity<GoalSuggestionResponse> generateGoal(
+            @RequestHeader("X-User-Id") UUID userId) {
+        return ResponseEntity.ok(service.generateGoal(userId));
+    }
 }
