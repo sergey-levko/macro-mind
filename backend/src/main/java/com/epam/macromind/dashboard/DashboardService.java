@@ -75,7 +75,7 @@ class DashboardService {
     private MacroTotals aggregateDay(UUID userId, LocalDate date) {
         var start = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         var end = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtBetween(userId, start, end);
+        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, start, end);
 
         MacroTotals totals = MacroTotals.zero();
         for (MealLog log : logs) {

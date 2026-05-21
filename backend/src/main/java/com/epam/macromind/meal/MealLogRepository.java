@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MealLogRepository extends JpaRepository<MealLog, UUID> {
-    List<MealLog> findByUserIdAndLoggedAtBetween(UUID userId, Instant start, Instant end);
+    List<MealLog> findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(UUID userId, Instant start, Instant end);
 }

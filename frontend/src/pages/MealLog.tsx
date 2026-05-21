@@ -295,11 +295,19 @@ interface MealLogCardProps {
   onItemChanged: () => void
 }
 
+function localHHMM(isoString: string): string {
+  const d = new Date(isoString)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 function MealLogCard({ log, onDeleted, onItemChanged }: MealLogCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [detail, setDetail] = useState<MealLog | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [editingTime, setEditingTime] = useState(false)
+  const [timeValue, setTimeValue] = useState(() => localHHMM(log.loggedAt))
+  const [savingTime, setSavingTime] = useState(false)
 
   async function toggleExpand() {
     if (!expanded) {
@@ -338,21 +346,54 @@ function MealLogCard({ log, onDeleted, onItemChanged }: MealLogCardProps) {
     }
   }
 
+  async function saveTime(newTime: string) {
+    setEditingTime(false)
+    setSavingTime(true)
+    try {
+      const d = new Date(log.loggedAt)
+      const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const loggedAt = new Date(`${localDate}T${newTime}:00`).toISOString()
+      await api.patch(`/api/v1/meal-logs/${log.id}`, { loggedAt })
+      onItemChanged()
+    } finally {
+      setSavingTime(false)
+    }
+  }
+
   const t = log.totals
+  const displayTime = new Date(log.loggedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="bg-gray-800 rounded-xl p-4">
       <div className="flex items-center justify-between">
-        <button onClick={toggleExpand} className="flex-1 text-left">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-white">
-              {new Date(log.loggedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <span className="text-xs text-gray-500">
+        <div className="flex-1 flex items-center gap-3 min-w-0">
+          <div onClick={e => e.stopPropagation()}>
+            {editingTime ? (
+              <input
+                type="time"
+                value={timeValue}
+                autoFocus
+                onChange={e => setTimeValue(e.target.value)}
+                onBlur={() => saveTime(timeValue)}
+                onKeyDown={e => { if (e.key === 'Enter') saveTime(timeValue) }}
+                className="px-2 py-0.5 bg-gray-700 border border-teal-500 text-white text-sm rounded-lg focus:outline-none [color-scheme:dark]"
+              />
+            ) : (
+              <span
+                onClick={() => { setTimeValue(localHHMM(log.loggedAt)); setEditingTime(true) }}
+                className="text-sm font-medium text-white hover:text-teal-400 cursor-pointer transition-colors"
+                title="Click to edit time"
+              >
+                {savingTime ? '…' : displayTime}
+              </span>
+            )}
+          </div>
+          <button onClick={toggleExpand} className="flex-1 text-left min-w-0">
+            <span className="text-xs text-gray-500 truncate">
               {Math.round(Number(t.caloriesKcal))} kcal · P {Math.round(Number(t.proteinG))}g · C {Math.round(Number(t.carbsG))}g · F {Math.round(Number(t.fatG))}g
             </span>
-          </div>
-        </button>
+          </button>
+        </div>
         <button
           onClick={deleteMeal}
           disabled={deleting}
@@ -418,15 +459,21 @@ interface MealSectionProps {
   onItemChanged: () => void
 }
 
+function currentTimeHHMM(): string {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+
 function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
   const [creating, setCreating] = useState(false)
+  const [mealTime, setMealTime] = useState(currentTimeHHMM)
 
   async function addMeal() {
     setCreating(true)
     try {
       await api.post('/api/v1/meal-logs', {
         mealType: type,
-        loggedAt: new Date(selectedDate + 'T00:00:00.000Z').toISOString(),
+        loggedAt: new Date(`${selectedDate}T${mealTime}:00`).toISOString(),
       })
       onCreated()
     } finally {
@@ -438,13 +485,21 @@ function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemCha
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">{MEAL_LABELS[type]}</h2>
-        <button
-          onClick={addMeal}
-          disabled={creating}
-          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
-        >
-          {creating ? '…' : '+ Add meal'}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="time"
+            value={mealTime}
+            onChange={e => setMealTime(e.target.value)}
+            className="px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-500 [color-scheme:dark]"
+          />
+          <button
+            onClick={addMeal}
+            disabled={creating}
+            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+          >
+            {creating ? '…' : '+ Add meal'}
+          </button>
+        </div>
       </div>
       {logs.length === 0 ? (
         <p className="text-sm text-gray-500">No meals logged yet.</p>
