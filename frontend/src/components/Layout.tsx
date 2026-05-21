@@ -34,6 +34,18 @@ export default function Layout() {
             Meal Log
           </NavLink>
           <NavLink
+            to="/foods"
+            className={({ isActive }) =>
+              `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-teal-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            Foods
+          </NavLink>
+          <NavLink
             to="/profile"
             className={({ isActive }) =>
               `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${

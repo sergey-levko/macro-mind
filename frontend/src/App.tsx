@@ -6,6 +6,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
 import Profile from './pages/Profile'
+import Foods from './pages/Foods'
 
 function AppRoutes() {
   const { userId } = useUser()
@@ -20,6 +21,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="meal-log" element={<MealLog />} />
+        <Route path="foods" element={<Foods />} />
         <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

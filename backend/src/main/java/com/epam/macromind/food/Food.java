@@ -54,4 +54,10 @@ public class Food {
     public BigDecimal getProteinG() { return proteinG; }
     public BigDecimal getCarbsG() { return carbsG; }
     public BigDecimal getFatG() { return fatG; }
+
+    public void setName(String name) { this.name = name; }
+    public void setCalories100g(BigDecimal calories100g) { this.calories100g = calories100g; }
+    public void setProteinG(BigDecimal proteinG) { this.proteinG = proteinG; }
+    public void setCarbsG(BigDecimal carbsG) { this.carbsG = carbsG; }
+    public void setFatG(BigDecimal fatG) { this.fatG = fatG; }
 }
