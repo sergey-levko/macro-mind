@@ -454,6 +454,7 @@ export default function MealLog() {
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -484,6 +485,23 @@ export default function MealLog() {
           >
             ‹
           </button>
+          <div className="relative">
+            <button
+              onClick={() => dateInputRef.current?.showPicker()}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+              title="Pick a date"
+            >
+              📅
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedDate}
+              max={todayIso()}
+              onChange={e => e.target.value && setSelectedDate(e.target.value)}
+              className="absolute inset-0 opacity-0 pointer-events-none w-full"
+            />
+          </div>
           <button
             onClick={() => setSelectedDate(d => shiftDay(d, 1))}
             disabled={isToday}
