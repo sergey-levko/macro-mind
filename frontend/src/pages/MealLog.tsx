@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { DayPicker } from 'react-day-picker'
 import { api } from '../lib/api'
 import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
 
@@ -116,7 +117,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [adding, setAdding] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   function handleQueryChange(v: string) {
     setQuery(v)
@@ -448,13 +449,79 @@ function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemCha
   )
 }
 
+// ─── Date Picker Popover ──────────────────────────────────────────────────────
+
+function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect: (iso: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+        title="Pick a date"
+      >
+        📅
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50">
+          <DayPicker
+            mode="single"
+            selected={new Date(selected + 'T12:00:00')}
+            defaultMonth={new Date(selected + 'T12:00:00')}
+            onSelect={date => {
+              if (date) {
+                onSelect(date.toISOString().split('T')[0])
+                setOpen(false)
+              }
+            }}
+            disabled={{ after: new Date() }}
+            classNames={{
+              root: 'p-4 bg-gray-900 rounded-xl border border-gray-700 shadow-2xl select-none',
+              months: 'relative',
+              month_caption: 'flex justify-center items-center h-8 mb-2',
+              caption_label: 'text-sm font-semibold text-white',
+              nav: 'absolute top-0 flex w-full justify-between',
+              button_previous: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+              button_next: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+              chevron: 'fill-current',
+              month_grid: 'w-full',
+              weekdays: 'flex',
+              weekday: 'w-9 h-7 text-center text-xs text-gray-500 font-normal',
+              weeks: 'mt-1',
+              week: 'flex',
+              day: 'p-0',
+              day_button: 'w-9 h-9 text-sm text-gray-300 hover:bg-gray-700 rounded-full transition-colors',
+              today: 'text-teal-400 font-semibold',
+              selected: '!bg-teal-600 !text-white rounded-full',
+              disabled: 'opacity-25 cursor-not-allowed',
+              outside: 'opacity-25',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Meal Log Page ────────────────────────────────────────────────────────────
 
 export default function MealLog() {
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -485,23 +552,7 @@ export default function MealLog() {
           >
             ‹
           </button>
-          <div className="relative">
-            <button
-              onClick={() => dateInputRef.current?.showPicker()}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
-              title="Pick a date"
-            >
-              📅
-            </button>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={selectedDate}
-              max={todayIso()}
-              onChange={e => e.target.value && setSelectedDate(e.target.value)}
-              className="absolute inset-0 opacity-0 pointer-events-none w-full"
-            />
-          </div>
+          <DatePickerPopover selected={selectedDate} onSelect={setSelectedDate} />
           <button
             onClick={() => setSelectedDate(d => shiftDay(d, 1))}
             disabled={isToday}
