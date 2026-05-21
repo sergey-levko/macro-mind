@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { api } from '../lib/api'
 
 interface AdviceResponse {
@@ -14,6 +16,31 @@ interface Message {
   text: string
 }
 
+function todayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function mondayStr(): string {
+  const d = new Date()
+  const day = d.getDay()
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mdComponents: Record<string, any> = {
+  p: ({ children }: { children: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }: { children: React.ReactNode }) => <strong className="font-semibold text-white">{children}</strong>,
+  ul: ({ children }: { children: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }: { children: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+  li: ({ children }: { children: React.ReactNode }) => <li>{children}</li>,
+  h1: ({ children }: { children: React.ReactNode }) => <h1 className="text-base font-bold text-white mb-1 mt-2">{children}</h1>,
+  h2: ({ children }: { children: React.ReactNode }) => <h2 className="text-sm font-bold text-white mb-1 mt-2">{children}</h2>,
+  h3: ({ children }: { children: React.ReactNode }) => <h3 className="text-sm font-semibold text-white mb-1 mt-1">{children}</h3>,
+  code: ({ children }: { children: React.ReactNode }) => <code className="bg-gray-700 px-1 rounded text-xs font-mono">{children}</code>,
+}
+
 export default function Coach() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -24,16 +51,46 @@ export default function Coach() {
   const [weeklyInsights, setWeeklyInsights] = useState<AdviceResponse[]>([])
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [insightsError, setInsightsError] = useState(false)
+  const [insightsNeedGoal, setInsightsNeedGoal] = useState(false)
 
   useEffect(() => {
     async function loadInsights() {
       setInsightsLoading(true)
       setInsightsError(false)
+      setInsightsNeedGoal(false)
       try {
-        const [daily, weekly] = await Promise.all([
+        let [daily, weekly] = await Promise.all([
           api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY'),
           api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY'),
         ])
+
+        let noGoal = false
+
+        if (daily.length === 0) {
+          try {
+            const generated = await api.post<AdviceResponse>('/api/v1/advice', {
+              adviceType: 'DAILY',
+              periodStart: todayStr(),
+            })
+            daily = [generated]
+          } catch (err) {
+            if (String(err).includes('400:')) noGoal = true
+          }
+        }
+
+        if (weekly.length === 0 && !noGoal) {
+          try {
+            const generated = await api.post<AdviceResponse>('/api/v1/advice', {
+              adviceType: 'WEEKLY',
+              periodStart: mondayStr(),
+            })
+            weekly = [generated]
+          } catch (err) {
+            if (String(err).includes('400:')) noGoal = true
+          }
+        }
+
+        if (noGoal) setInsightsNeedGoal(true)
         setDailyInsights(daily)
         setWeeklyInsights(weekly)
       } catch {
@@ -72,6 +129,16 @@ export default function Coach() {
     }
   }
 
+  function InsightContent({ content }: { content: string }) {
+    return (
+      <div className="text-sm text-gray-300">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8 max-w-6xl space-y-6">
       <h1 className="text-2xl font-bold text-white">Coach</h1>
@@ -91,18 +158,21 @@ export default function Coach() {
               </p>
             )}
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
+                  className={`max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
                     msg.role === 'user'
                       ? 'bg-teal-600 text-white rounded-br-sm'
                       : 'bg-gray-800 text-gray-200 rounded-bl-sm'
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === 'user' ? (
+                    <span className="whitespace-pre-wrap">{msg.text}</span>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                      {msg.text}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </div>
             ))}
@@ -140,20 +210,28 @@ export default function Coach() {
 
         {/* Insights Panel */}
         <div className="space-y-4">
+          {insightsNeedGoal && (
+            <div className="bg-gray-900 rounded-2xl border border-amber-800/40 p-4">
+              <p className="text-sm text-amber-400">
+                Set up your nutritional goals in Profile to enable personalized insights.
+              </p>
+            </div>
+          )}
+
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <h2 className="text-sm font-semibold text-white mb-3">Daily Insights</h2>
             {insightsLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-gray-500">Generating insights…</p>
             ) : insightsError ? (
               <p className="text-sm text-red-400">Could not load insights.</p>
             ) : dailyInsights.length === 0 ? (
               <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {dailyInsights.slice(0, 3).map(insight => (
                   <div key={insight.id} className="space-y-1">
                     <p className="text-xs text-gray-500">{insight.periodStart}</p>
-                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{insight.content}</p>
+                    <InsightContent content={insight.content} />
                   </div>
                 ))}
               </div>
@@ -163,17 +241,17 @@ export default function Coach() {
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <h2 className="text-sm font-semibold text-white mb-3">Weekly Insights</h2>
             {insightsLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-gray-500">Generating insights…</p>
             ) : insightsError ? (
               <p className="text-sm text-red-400">Could not load insights.</p>
             ) : weeklyInsights.length === 0 ? (
               <p className="text-sm text-gray-500">No insights yet — log some meals to get started.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {weeklyInsights.slice(0, 2).map(insight => (
                   <div key={insight.id} className="space-y-1">
                     <p className="text-xs text-gray-500">Week of {insight.periodStart}</p>
-                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{insight.content}</p>
+                    <InsightContent content={insight.content} />
                   </div>
                 ))}
               </div>
