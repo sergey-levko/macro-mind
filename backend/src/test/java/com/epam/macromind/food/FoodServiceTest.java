@@ -1,5 +1,6 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.meal.MealItemRepository;
 import com.epam.macromind.user.UserNotFoundException;
 import com.epam.macromind.user.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ class FoodServiceTest {
     @Mock FoodRepository foodRepository;
     @Mock UserRepository userRepository;
     @Mock UsdaFoodClient usdaFoodClient;
+    @Mock MealItemRepository mealItemRepository;
 
     @InjectMocks FoodService service;
 
@@ -101,6 +103,7 @@ class FoodServiceTest {
     void deleteFood_success_deletesFood() {
         Food food = sampleFood();
         when(foodRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(mealItemRepository.existsByFoodId(FOOD_ID)).thenReturn(false);
 
         service.deleteFood(USER_ID, FOOD_ID);
 

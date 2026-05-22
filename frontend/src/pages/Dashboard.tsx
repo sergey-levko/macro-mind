@@ -212,7 +212,9 @@ function WeeklyChart({ data }: WeeklyChartProps) {
           <Tooltip
             contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8 }}
             labelStyle={{ color: '#e5e7eb' }}
+            itemStyle={{ color: '#e5e7eb' }}
             formatter={(v: number) => [`${v} kcal`, 'Calories']}
+            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
           />
           <Bar dataKey="calories" radius={[4, 4, 0, 0]}>
             {chartData.map((entry, i) => (

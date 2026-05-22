@@ -5,5 +5,6 @@ import java.time.LocalDate;
 
 record GenerateAdviceRequest(
         @NotNull AdviceType adviceType,
-        @NotNull LocalDate periodStart
+        @NotNull LocalDate periodStart,
+        boolean preview
 ) {}

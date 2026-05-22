@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DayPicker } from 'react-day-picker'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api } from '../lib/api'
@@ -28,6 +29,18 @@ function mondayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function formatDateLabel(iso: string): string {
+  const today = todayStr()
+  const d = new Date(iso + 'T12:00:00')
+  const yesterday = new Date(d)
+  yesterday.setDate(d.getDate() - 1)
+  const yIso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
+  const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  if (iso === today) return `Today, ${dateStr}`
+  if (iso === yIso) return `Yesterday, ${dateStr}`
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mdComponents: Record<string, any> = {
   p: ({ children }: { children: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -51,61 +64,224 @@ function InsightContent({ content }: { content: string }) {
   )
 }
 
+const dayPickerClassNames = {
+  root: 'p-4 bg-gray-900 rounded-xl border border-gray-700 shadow-2xl select-none',
+  months: 'relative',
+  month_caption: 'flex justify-center items-center h-8 mb-2',
+  caption_label: 'text-sm font-semibold text-white',
+  nav: 'absolute top-0 flex w-full justify-between',
+  button_previous: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+  button_next: 'h-8 w-8 flex items-center justify-center text-gray-400 hover:text-white rounded transition-colors',
+  chevron: 'fill-current',
+  month_grid: 'w-full',
+  weekdays: 'flex',
+  weekday: 'w-9 h-7 text-center text-xs text-gray-500 font-normal',
+  weeks: 'mt-1',
+  week: 'flex',
+  day: 'p-0 w-9',
+  day_button: 'w-9 h-9 text-sm text-gray-300 hover:bg-gray-700 rounded-full transition-colors',
+  today: 'text-teal-400 font-semibold',
+  selected: '!bg-teal-600 !text-white rounded-full',
+  disabled: 'opacity-25 cursor-not-allowed',
+  outside: 'opacity-0 pointer-events-none',
+}
+
+function HistoryDatePicker({ selected, onSelect, onClear }: {
+  selected: string | null
+  onSelect: (iso: string) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative flex items-center gap-1">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+          selected
+            ? 'bg-teal-600/20 border-teal-700 text-teal-300'
+            : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300'
+        }`}
+        title="Filter by date"
+      >
+        {selected ? formatDateLabel(selected) : '📅 All dates'}
+      </button>
+      {selected && (
+        <button
+          onClick={onClear}
+          className="text-gray-500 hover:text-gray-300 text-sm px-1 transition-colors"
+          title="Clear date filter"
+        >
+          ✕
+        </button>
+      )}
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50">
+          <DayPicker
+            mode="single"
+            ISOWeek
+            selected={selected ? new Date(selected + 'T12:00:00') : undefined}
+            defaultMonth={selected ? new Date(selected + 'T12:00:00') : new Date()}
+            onSelect={date => {
+              if (date) {
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                onSelect(`${y}-${m}-${d}`)
+                setOpen(false)
+              }
+            }}
+            disabled={{ after: new Date() }}
+            classNames={dayPickerClassNames}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InsightPanel({
+  type,
+  periodLabel,
+  insight,
+  preview,
+  generating,
+  saving,
+  needGoal,
+  onGenerate,
+  onSave,
+  onDiscard,
+}: {
+  type: 'DAILY' | 'WEEKLY'
+  periodLabel: string
+  insight: AdviceResponse | null
+  preview: string | null
+  generating: boolean
+  saving: boolean
+  needGoal: boolean
+  onGenerate: () => void
+  onSave: () => void
+  onDiscard: () => void
+}) {
+  return (
+    <div className="space-y-4">
+      {needGoal && (
+        <div className="bg-gray-900 rounded-2xl border border-amber-800/40 p-4">
+          <p className="text-sm text-amber-400">
+            Set up your nutritional goals in Profile to enable personalized insights.
+          </p>
+        </div>
+      )}
+
+      {insight && !preview && (
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <p className="text-xs text-gray-500 mb-3">
+            {type === 'WEEKLY' ? `Week of ${insight.periodStart}` : insight.periodStart}
+          </p>
+          <InsightContent content={insight.content} />
+        </div>
+      )}
+
+      {!insight && !preview && !generating && (
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <p className="text-sm text-gray-500">
+            No {type === 'DAILY' ? 'daily' : 'weekly'} insight for {periodLabel} yet.
+          </p>
+        </div>
+      )}
+
+      {generating && (
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <p className="text-sm text-gray-500">Generating insight…</p>
+        </div>
+      )}
+
+      {preview && (
+        <div className="bg-gray-900 rounded-2xl border border-teal-800/40 p-6 space-y-4">
+          <p className="text-xs text-teal-500 font-medium">Preview — not saved yet</p>
+          <InsightContent content={preview} />
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onSave}
+              disabled={saving}
+              className="px-4 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={onDiscard}
+              disabled={saving}
+              className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 text-sm rounded-lg transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!generating && !preview && (
+        <button
+          onClick={onGenerate}
+          className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
+        >
+          Generate new insight
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Coach() {
   const [tab, setTab] = useState<'chat' | 'insights'>('chat')
-  const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly'>('daily')
+  const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly' | 'history'>('daily')
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const [dailyInsights, setDailyInsights] = useState<AdviceResponse[]>([])
-  const [weeklyInsights, setWeeklyInsights] = useState<AdviceResponse[]>([])
+  const [dailyInsight, setDailyInsight] = useState<AdviceResponse | null>(null)
+  const [weeklyInsight, setWeeklyInsight] = useState<AdviceResponse | null>(null)
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [insightsError, setInsightsError] = useState(false)
-  const [insightsNeedGoal, setInsightsNeedGoal] = useState(false)
+
+  const [previewDaily, setPreviewDaily] = useState<string | null>(null)
+  const [previewWeekly, setPreviewWeekly] = useState<string | null>(null)
+  const [generatingDaily, setGeneratingDaily] = useState(false)
+  const [generatingWeekly, setGeneratingWeekly] = useState(false)
+  const [savingDaily, setSavingDaily] = useState(false)
+  const [savingWeekly, setSavingWeekly] = useState(false)
+  const [needGoalDaily, setNeedGoalDaily] = useState(false)
+  const [needGoalWeekly, setNeedGoalWeekly] = useState(false)
+
+  const [history, setHistory] = useState<AdviceResponse[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DAILY' | 'WEEKLY'>('ALL')
+  const [historyDate, setHistoryDate] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadInsights() {
       setInsightsLoading(true)
       setInsightsError(false)
-      setInsightsNeedGoal(false)
       try {
-        let [daily, weekly] = await Promise.all([
-          api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY'),
-          api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY'),
+        const [daily, weekly] = await Promise.all([
+          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${todayStr()}`),
+          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${mondayStr()}`),
         ])
-
-        let noGoal = false
-
-        if (daily.length === 0) {
-          try {
-            const generated = await api.post<AdviceResponse>('/api/v1/advice', {
-              adviceType: 'DAILY',
-              periodStart: todayStr(),
-            })
-            daily = [generated]
-          } catch (err) {
-            if (String(err).includes('400:')) noGoal = true
-          }
-        }
-
-        if (weekly.length === 0 && !noGoal) {
-          try {
-            const generated = await api.post<AdviceResponse>('/api/v1/advice', {
-              adviceType: 'WEEKLY',
-              periodStart: mondayStr(),
-            })
-            weekly = [generated]
-          } catch (err) {
-            if (String(err).includes('400:')) noGoal = true
-          }
-        }
-
-        if (noGoal) setInsightsNeedGoal(true)
-        setDailyInsights(daily)
-        setWeeklyInsights(weekly)
+        setDailyInsight(daily[0] ?? null)
+        setWeeklyInsight(weekly[0] ?? null)
       } catch {
         setInsightsError(true)
       } finally {
@@ -116,8 +292,58 @@ export default function Coach() {
   }, [])
 
   useEffect(() => {
+    if (insightPeriod !== 'history') return
+    setHistoryLoading(true)
+    const params = new URLSearchParams()
+    if (historyFilter !== 'ALL') params.set('adviceType', historyFilter)
+    if (historyDate) params.set('periodStart', historyDate)
+    const qs = params.toString()
+    api.get<AdviceResponse[]>(`/api/v1/advice${qs ? `?${qs}` : ''}`)
+      .then(data => setHistory(data.sort((a, b) => b.periodStart.localeCompare(a.periodStart) || b.createdAt.localeCompare(a.createdAt))))
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false))
+  }, [insightPeriod, historyFilter, historyDate])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function generateInsight(type: 'DAILY' | 'WEEKLY') {
+    const setGenerating = type === 'DAILY' ? setGeneratingDaily : setGeneratingWeekly
+    const setNeedGoal = type === 'DAILY' ? setNeedGoalDaily : setNeedGoalWeekly
+    const setPreview = type === 'DAILY' ? setPreviewDaily : setPreviewWeekly
+    setGenerating(true)
+    setNeedGoal(false)
+    try {
+      const result = await api.post<AdviceResponse>('/api/v1/advice', {
+        adviceType: type,
+        periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+        preview: true,
+      })
+      setPreview(result.content)
+    } catch (err) {
+      if (String(err).includes('400:')) setNeedGoal(true)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function saveInsight(type: 'DAILY' | 'WEEKLY') {
+    const setSaving = type === 'DAILY' ? setSavingDaily : setSavingWeekly
+    const setPreview = type === 'DAILY' ? setPreviewDaily : setPreviewWeekly
+    const setInsight = type === 'DAILY' ? setDailyInsight : setWeeklyInsight
+    setSaving(true)
+    try {
+      const result = await api.post<AdviceResponse>('/api/v1/advice', {
+        adviceType: type,
+        periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+      })
+      setInsight(result)
+      setPreview(null)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function sendMessage() {
     const text = input.trim()
@@ -146,6 +372,17 @@ export default function Coach() {
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       active ? 'bg-teal-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
     }`
+
+  const filterBtnCls = (active: boolean) =>
+    `px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+      active ? 'bg-teal-600/20 border-teal-700 text-teal-300' : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400'
+    }`
+
+  const groupedHistory = history.reduce<Record<string, AdviceResponse[]>>((acc, item) => {
+    ;(acc[item.periodStart] ??= []).push(item)
+    return acc
+  }, {})
+  const historyDays = Object.keys(groupedHistory).sort((a, b) => b.localeCompare(a))
 
   return (
     <div className="p-8 max-w-4xl space-y-6">
@@ -223,52 +460,94 @@ export default function Coach() {
 
       {tab === 'insights' && (
         <div className="space-y-4">
-          {insightsNeedGoal && (
-            <div className="bg-gray-900 rounded-2xl border border-amber-800/40 p-4">
-              <p className="text-sm text-amber-400">
-                Set up your nutritional goals in Profile to enable personalized insights.
-              </p>
-            </div>
-          )}
-
           <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-xl p-1 w-fit">
             <button className={pillCls(insightPeriod === 'daily')} onClick={() => setInsightPeriod('daily')}>Daily</button>
             <button className={pillCls(insightPeriod === 'weekly')} onClick={() => setInsightPeriod('weekly')}>Weekly</button>
+            <button className={pillCls(insightPeriod === 'history')} onClick={() => setInsightPeriod('history')}>History</button>
           </div>
 
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            {insightsLoading ? (
-              <p className="text-sm text-gray-500">Generating insights…</p>
-            ) : insightsError ? (
+          {insightsLoading && insightPeriod !== 'history' ? (
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+              <p className="text-sm text-gray-500">Loading…</p>
+            </div>
+          ) : insightsError && insightPeriod !== 'history' ? (
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
               <p className="text-sm text-red-400">Could not load insights.</p>
-            ) : insightPeriod === 'daily' ? (
-              dailyInsights.length === 0 ? (
-                <p className="text-sm text-gray-500">No daily insights yet — log some meals to get started.</p>
-              ) : (
-                <div className="space-y-6">
-                  {dailyInsights.slice(0, 3).map(insight => (
-                    <div key={insight.id}>
-                      <p className="text-xs text-gray-500 mb-2">{insight.periodStart}</p>
-                      <InsightContent content={insight.content} />
-                    </div>
-                  ))}
+            </div>
+          ) : insightPeriod === 'daily' ? (
+            <InsightPanel
+              type="DAILY"
+              periodLabel="today"
+              insight={dailyInsight}
+              preview={previewDaily}
+              generating={generatingDaily}
+              saving={savingDaily}
+              needGoal={needGoalDaily}
+              onGenerate={() => generateInsight('DAILY')}
+              onSave={() => saveInsight('DAILY')}
+              onDiscard={() => setPreviewDaily(null)}
+            />
+          ) : insightPeriod === 'weekly' ? (
+            <InsightPanel
+              type="WEEKLY"
+              periodLabel="this week"
+              insight={weeklyInsight}
+              preview={previewWeekly}
+              generating={generatingWeekly}
+              saving={savingWeekly}
+              needGoal={needGoalWeekly}
+              onGenerate={() => generateInsight('WEEKLY')}
+              onSave={() => saveInsight('WEEKLY')}
+              onDiscard={() => setPreviewWeekly(null)}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <HistoryDatePicker
+                  selected={historyDate}
+                  onSelect={setHistoryDate}
+                  onClear={() => setHistoryDate(null)}
+                />
+                <div className="flex gap-1">
+                  <button className={filterBtnCls(historyFilter === 'ALL')} onClick={() => setHistoryFilter('ALL')}>All</button>
+                  <button className={filterBtnCls(historyFilter === 'DAILY')} onClick={() => setHistoryFilter('DAILY')}>Daily</button>
+                  <button className={filterBtnCls(historyFilter === 'WEEKLY')} onClick={() => setHistoryFilter('WEEKLY')}>Weekly</button>
                 </div>
-              )
-            ) : (
-              weeklyInsights.length === 0 ? (
-                <p className="text-sm text-gray-500">No weekly insights yet — log some meals to get started.</p>
-              ) : (
-                <div className="space-y-6">
-                  {weeklyInsights.slice(0, 2).map(insight => (
-                    <div key={insight.id}>
-                      <p className="text-xs text-gray-500 mb-2">Week of {insight.periodStart}</p>
-                      <InsightContent content={insight.content} />
-                    </div>
-                  ))}
-                </div>
-              )
-            )}
-          </div>
+              </div>
+
+              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                {historyLoading ? (
+                  <p className="text-sm text-gray-500">Loading history…</p>
+                ) : historyDays.length === 0 ? (
+                  <p className="text-sm text-gray-500">No saved insights found.</p>
+                ) : (
+                  <div className="space-y-8">
+                    {historyDays.map(day => (
+                      <div key={day}>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                          {formatDateLabel(day)}
+                        </p>
+                        <div className="space-y-6">
+                          {groupedHistory[day].map(item => (
+                            <div key={item.id} className="border-b border-gray-800 pb-6 last:border-0 last:pb-0">
+                              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-3 ${
+                                item.adviceType === 'DAILY'
+                                  ? 'bg-teal-900/50 text-teal-400'
+                                  : 'bg-purple-900/50 text-purple-400'
+                              }`}>
+                                {item.adviceType === 'DAILY' ? 'Daily' : 'Weekly'}
+                              </span>
+                              <InsightContent content={item.content} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
