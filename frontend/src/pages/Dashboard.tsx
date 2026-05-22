@@ -19,7 +19,7 @@ function MacroBar({ label, value, target, pct, unit = 'g', color }: MacroBarProp
   const displayPct = pct ?? 0
   const overTarget = displayPct > 100
   const barColor = overTarget ? '#f87171' : color
-  const width = Math.min(displayPct, 200) / 2 // map 0–200% → 0–100% width
+  const width = Math.min(displayPct, 100)
 
   return (
     <div>
