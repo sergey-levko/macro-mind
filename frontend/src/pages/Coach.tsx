@@ -73,8 +73,8 @@ export default function Coach() {
       setInsightsNeedGoal(false)
       try {
         let [daily, weekly] = await Promise.all([
-          api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY'),
-          api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY'),
+          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${todayStr()}`),
+          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${mondayStr()}`),
         ])
 
         let noGoal = false
