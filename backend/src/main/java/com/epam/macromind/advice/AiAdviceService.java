@@ -49,6 +49,10 @@ class AiAdviceService {
                 .call()
                 .content();
 
+        if (request.preview()) {
+            return new AiAdviceResponse(null, userId, request.adviceType(), request.periodStart(), content, null);
+        }
+
         var advice = adviceRepository.save(
                 new AiAdvice(userId, request.adviceType(), content, request.periodStart()));
         return toResponse(advice);

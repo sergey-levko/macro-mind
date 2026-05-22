@@ -23,6 +23,7 @@ spring:
       chat:
         options:
           model: claude-sonnet-4-6
+          max-tokens: 4096
 
 server:
   port: 8080

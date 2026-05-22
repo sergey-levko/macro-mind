@@ -39,7 +39,7 @@ class AiAdviceServiceTest {
 
     private final UUID userId = UUID.randomUUID();
     private final LocalDate today = LocalDate.of(2026, 5, 20);
-    private final GenerateAdviceRequest dailyRequest = new GenerateAdviceRequest(AdviceType.DAILY, today);
+    private final GenerateAdviceRequest dailyRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, false);
 
     @BeforeEach
     void setUp() {
