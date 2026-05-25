@@ -1,5 +1,6 @@
 package com.epam.macromind.meal;
 
+import com.epam.macromind.auth.JwtService;
 import com.epam.macromind.common.GlobalExceptionHandler;
 import com.epam.macromind.food.FoodNotFoundException;
 import com.epam.macromind.user.UserNotFoundException;
@@ -9,13 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -26,13 +27,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(MealController.class)
 @Import(GlobalExceptionHandler.class)
+@WithMockUser(username = "00000000-0000-0000-0000-000000000001")
 class MealControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @MockitoBean MealService service;
+    @MockitoBean JwtService jwtService;
 
-    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID LOG_ID = UUID.randomUUID();
     private static final UUID ITEM_ID = UUID.randomUUID();
     private static final UUID FOOD_ID = UUID.randomUUID();
@@ -50,7 +53,6 @@ class MealControllerTest {
         when(service.createMealLog(eq(USER_ID), any())).thenReturn(SAMPLE_LOG);
 
         mvc.perform(post("/api/v1/meal-logs")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealType\":\"BREAKFAST\"}"))
                 .andExpect(status().isCreated())
@@ -60,7 +62,6 @@ class MealControllerTest {
     @Test
     void create_missingMealType_returns400() throws Exception {
         mvc.perform(post("/api/v1/meal-logs")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -72,7 +73,6 @@ class MealControllerTest {
                 .thenThrow(new UserNotFoundException(USER_ID));
 
         mvc.perform(post("/api/v1/meal-logs")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealType\":\"LUNCH\"}"))
                 .andExpect(status().isNotFound());
@@ -100,22 +100,19 @@ class MealControllerTest {
     void listByDate_validDate_returns200() throws Exception {
         when(service.getMealLogsByDate(eq(USER_ID), any())).thenReturn(List.of());
 
-        mvc.perform(get("/api/v1/meal-logs?date=2024-01-15")
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(get("/api/v1/meal-logs?date=2024-01-15"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void listByDate_missingDate_returns400() throws Exception {
-        mvc.perform(get("/api/v1/meal-logs")
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(get("/api/v1/meal-logs"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void delete_success_returns204() throws Exception {
-        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID)
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID))
                 .andExpect(status().isNoContent());
 
         verify(service).deleteMealLog(USER_ID, LOG_ID);
@@ -126,8 +123,7 @@ class MealControllerTest {
         doThrow(new MealLogAccessDeniedException(LOG_ID))
                 .when(service).deleteMealLog(USER_ID, LOG_ID);
 
-        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID)
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID))
                 .andExpect(status().isForbidden());
     }
 
@@ -136,7 +132,6 @@ class MealControllerTest {
         when(service.addItem(eq(USER_ID), eq(LOG_ID), any())).thenReturn(SAMPLE_ITEM);
 
         mvc.perform(post("/api/v1/meal-logs/" + LOG_ID + "/items")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"foodId\":\"" + FOOD_ID + "\",\"quantityG\":150}"))
                 .andExpect(status().isCreated())
@@ -146,7 +141,6 @@ class MealControllerTest {
     @Test
     void addItem_invalidQuantityG_returns400() throws Exception {
         mvc.perform(post("/api/v1/meal-logs/" + LOG_ID + "/items")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"foodId\":\"" + FOOD_ID + "\",\"quantityG\":-1}"))
                 .andExpect(status().isBadRequest());
@@ -158,7 +152,6 @@ class MealControllerTest {
                 .thenThrow(new FoodNotFoundException(FOOD_ID));
 
         mvc.perform(post("/api/v1/meal-logs/" + LOG_ID + "/items")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"foodId\":\"" + FOOD_ID + "\",\"quantityG\":100}"))
                 .andExpect(status().isNotFound());
@@ -166,8 +159,7 @@ class MealControllerTest {
 
     @Test
     void removeItem_success_returns204() throws Exception {
-        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID + "/items/" + ITEM_ID)
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(delete("/api/v1/meal-logs/" + LOG_ID + "/items/" + ITEM_ID))
                 .andExpect(status().isNoContent());
 
         verify(service).removeItem(USER_ID, LOG_ID, ITEM_ID);

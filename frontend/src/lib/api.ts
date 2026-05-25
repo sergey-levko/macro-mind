@@ -1,29 +1,34 @@
-const USER_ID_KEY = 'macromind_user_id'
+const TOKEN_KEY = 'macromind_token'
 
-export function getUserId(): string | null {
-  return localStorage.getItem(USER_ID_KEY)
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-export function setUserId(id: string): void {
-  localStorage.setItem(USER_ID_KEY, id)
+export function setToken(t: string): void {
+  localStorage.setItem(TOKEN_KEY, t)
 }
 
-export function clearUserId(): void {
-  localStorage.removeItem(USER_ID_KEY)
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const userId = getUserId()
-  if (!userId) throw new Error('No user identity in localStorage')
+  const token = getToken()
 
   const res = await fetch(path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'X-User-Id': userId,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
   })
+
+  if (res.status === 401) {
+    clearToken()
+    window.location.href = '/login'
+    throw new Error('401: Unauthorized')
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)

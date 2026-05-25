@@ -1,5 +1,6 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.common.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +22,8 @@ class FoodController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    FoodResponse create(@RequestHeader("X-User-Id") UUID userId,
-                        @Valid @RequestBody CreateFoodRequest request) {
-        return service.createFood(userId, request);
+    FoodResponse create(@Valid @RequestBody CreateFoodRequest request) {
+        return service.createFood(SecurityUtils.currentUserId(), request);
     }
 
     @GetMapping("/{id}")
@@ -32,30 +32,26 @@ class FoodController {
     }
 
     @GetMapping
-    List<FoodResponse> search(@RequestHeader("X-User-Id") UUID userId,
-                              @RequestParam(required = false) String search) {
-        return service.searchFoods(userId, search);
+    List<FoodResponse> search(@RequestParam(required = false) String search) {
+        return service.searchFoods(SecurityUtils.currentUserId(), search);
     }
 
     @PutMapping("/{id}")
-    FoodResponse update(@RequestHeader("X-User-Id") UUID userId,
-                        @PathVariable UUID id,
+    FoodResponse update(@PathVariable UUID id,
                         @Valid @RequestBody UpdateFoodRequest request) {
-        return service.updateFood(userId, id, request);
+        return service.updateFood(SecurityUtils.currentUserId(), id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@RequestHeader("X-User-Id") UUID userId,
-                @PathVariable UUID id) {
-        service.deleteFood(userId, id);
+    void delete(@PathVariable UUID id) {
+        service.deleteFood(SecurityUtils.currentUserId(), id);
     }
 
     @GetMapping("/usda-search")
-    List<UsdaFoodResult> searchUsda(@RequestHeader("X-User-Id") UUID userId,
-                                    @RequestParam String q) {
+    List<UsdaFoodResult> searchUsda(@RequestParam String q) {
         try {
-            return service.searchUsda(userId, q);
+            return service.searchUsda(SecurityUtils.currentUserId(), q);
         } catch (UsdaServiceUnavailableException e) {
             return emptyList();
         }
@@ -63,8 +59,7 @@ class FoodController {
 
     @PostMapping("/import")
     @ResponseStatus(HttpStatus.CREATED)
-    FoodResponse importFood(@RequestHeader("X-User-Id") UUID userId,
-                            @Valid @RequestBody ImportFoodRequest request) {
-        return service.importFood(userId, request);
+    FoodResponse importFood(@Valid @RequestBody ImportFoodRequest request) {
+        return service.importFood(SecurityUtils.currentUserId(), request);
     }
 }

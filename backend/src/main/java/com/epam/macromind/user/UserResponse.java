@@ -12,7 +12,7 @@ public record UserResponse(
         BigDecimal heightCm,
         GoalType goalType
 ) {
-    static UserResponse from(User u) {
+    public static UserResponse from(User u) {
         return new UserResponse(u.getId(), u.getName(), u.getEmail(),
                 u.getAge(), u.getWeightKg(), u.getHeightCm(), u.getGoalType());
     }

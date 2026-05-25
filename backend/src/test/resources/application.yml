@@ -2,3 +2,6 @@ spring:
   ai:
     anthropic:
       api-key: test-key
+
+jwt:
+  secret: test-secret-key-must-be-at-least-32-chars!!

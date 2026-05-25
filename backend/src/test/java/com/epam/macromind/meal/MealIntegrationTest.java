@@ -1,10 +1,8 @@
 package com.epam.macromind.meal;
 
+import com.epam.macromind.auth.AuthResponse;
 import com.epam.macromind.food.CreateFoodRequest;
 import com.epam.macromind.food.FoodResponse;
-import com.epam.macromind.user.CreateUserRequest;
-import com.epam.macromind.user.GoalType;
-import com.epam.macromind.user.UserResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,37 +45,46 @@ class MealIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    private UUID createUser() {
-        CreateUserRequest req = new CreateUserRequest(
-                "Meal User", "meal-" + UUID.randomUUID() + "@example.com",
-                28, new BigDecimal("70.0"), new BigDecimal("175.0"), GoalType.MAINTAIN_WEIGHT);
-        return restTemplate.postForEntity(url("/api/v1/users"), req, UserResponse.class)
-                .getBody().id();
+    private AuthResponse register() {
+        String body = """
+                {
+                  "name": "Meal User",
+                  "email": "meal-%s@example.com",
+                  "password": "password123",
+                  "age": 28,
+                  "weightKg": 70.0,
+                  "heightCm": 175.0,
+                  "goalType": "MAINTAIN_WEIGHT"
+                }
+                """.formatted(UUID.randomUUID());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return restTemplate.postForEntity(url("/api/v1/auth/register"),
+                new HttpEntity<>(body, headers), AuthResponse.class).getBody();
     }
 
-    private UUID createFood(UUID userId) {
+    private UUID createFood(String token) {
         CreateFoodRequest req = new CreateFoodRequest("Chicken",
                 new BigDecimal("165"), new BigDecimal("31"),
                 BigDecimal.ZERO, new BigDecimal("3.6"));
-        HttpHeaders headers = headersFor(userId);
         return restTemplate.exchange(url("/api/v1/foods"), HttpMethod.POST,
-                new HttpEntity<>(req, headers), FoodResponse.class).getBody().id();
+                new HttpEntity<>(req, headersFor(token)), FoodResponse.class).getBody().id();
     }
 
-    private HttpHeaders headersFor(UUID userId) {
+    private HttpHeaders headersFor(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-User-Id", userId.toString());
+        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
 
     @Test
     void createAndRetrieve_fullRoundTrip() {
-        UUID userId = createUser();
+        String token = register().token();
 
         ResponseEntity<MealLogResponse> created = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>("{\"mealType\":\"BREAKFAST\"}", headersFor(userId)),
+                new HttpEntity<>("{\"mealType\":\"BREAKFAST\"}", headersFor(token)),
                 MealLogResponse.class);
 
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -94,19 +101,19 @@ class MealIntegrationTest {
 
     @Test
     void addItem_computesCorrectMacros() {
-        UUID userId = createUser();
-        UUID foodId = createFood(userId);
+        String token = register().token();
+        UUID foodId = createFood(token);
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>("{\"mealType\":\"LUNCH\"}", headersFor(userId)),
+                new HttpEntity<>("{\"mealType\":\"LUNCH\"}", headersFor(token)),
                 MealLogResponse.class);
         UUID logId = log.getBody().id();
 
         String itemBody = "{\"foodId\":\"" + foodId + "\",\"quantityG\":200}";
         ResponseEntity<MealItemResponse> item = restTemplate.exchange(
                 url("/api/v1/meal-logs/" + logId + "/items"), HttpMethod.POST,
-                new HttpEntity<>(itemBody, headersFor(userId)), MealItemResponse.class);
+                new HttpEntity<>(itemBody, headersFor(token)), MealItemResponse.class);
 
         assertThat(item.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(item.getBody().calories()).isEqualByComparingTo("330.00");
@@ -115,14 +122,14 @@ class MealIntegrationTest {
 
     @Test
     void listByDate_returnsOnlyThatDaysLogs() {
-        UUID userId = createUser();
+        String token = register().token();
         restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>("{\"mealType\":\"DINNER\"}", headersFor(userId)),
+                new HttpEntity<>("{\"mealType\":\"DINNER\"}", headersFor(token)),
                 MealLogResponse.class);
 
         ResponseEntity<MealLogSummaryResponse[]> results = restTemplate.exchange(
                 url("/api/v1/meal-logs?date=2099-01-01"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(userId)), MealLogSummaryResponse[].class);
+                new HttpEntity<>(headersFor(token)), MealLogSummaryResponse[].class);
 
         assertThat(results.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(results.getBody()).isEmpty();
@@ -130,22 +137,22 @@ class MealIntegrationTest {
 
     @Test
     void delete_removesLogAndItems() {
-        UUID userId = createUser();
-        UUID foodId = createFood(userId);
+        String token = register().token();
+        UUID foodId = createFood(token);
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>("{\"mealType\":\"SNACK\"}", headersFor(userId)),
+                new HttpEntity<>("{\"mealType\":\"SNACK\"}", headersFor(token)),
                 MealLogResponse.class);
         UUID logId = log.getBody().id();
 
         restTemplate.exchange(url("/api/v1/meal-logs/" + logId + "/items"), HttpMethod.POST,
-                new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}", headersFor(userId)),
+                new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}", headersFor(token)),
                 MealItemResponse.class);
 
         ResponseEntity<Void> deleted = restTemplate.exchange(
                 url("/api/v1/meal-logs/" + logId), HttpMethod.DELETE,
-                new HttpEntity<>(headersFor(userId)), Void.class);
+                new HttpEntity<>(headersFor(token)), Void.class);
 
         assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
@@ -156,20 +163,20 @@ class MealIntegrationTest {
 
     @Test
     void addItem_toAnotherUsersLog_returns403() {
-        UUID ownerUserId = createUser();
-        UUID otherUserId = createUser();
+        String ownerToken = register().token();
+        String otherToken = register().token();
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>("{\"mealType\":\"BREAKFAST\"}", headersFor(ownerUserId)),
+                new HttpEntity<>("{\"mealType\":\"BREAKFAST\"}", headersFor(ownerToken)),
                 MealLogResponse.class);
         UUID logId = log.getBody().id();
 
-        UUID foodId = createFood(ownerUserId);
+        UUID foodId = createFood(ownerToken);
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/meal-logs/" + logId + "/items"), HttpMethod.POST,
                 new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}",
-                        headersFor(otherUserId)), Map.class);
+                        headersFor(otherToken)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }

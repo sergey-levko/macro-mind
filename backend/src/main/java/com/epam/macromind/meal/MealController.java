@@ -1,5 +1,6 @@
 package com.epam.macromind.meal;
 
+import com.epam.macromind.common.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -21,9 +22,8 @@ class MealController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    MealLogResponse create(@RequestHeader("X-User-Id") UUID userId,
-                           @Valid @RequestBody CreateMealLogRequest request) {
-        return service.createMealLog(userId, request);
+    MealLogResponse create(@Valid @RequestBody CreateMealLogRequest request) {
+        return service.createMealLog(SecurityUtils.currentUserId(), request);
     }
 
     @GetMapping("/{id}")
@@ -32,37 +32,33 @@ class MealController {
     }
 
     @GetMapping
-    List<MealLogSummaryResponse> listByDate(@RequestHeader("X-User-Id") UUID userId,
-                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return service.getMealLogsByDate(userId, date);
+    List<MealLogSummaryResponse> listByDate(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return service.getMealLogsByDate(SecurityUtils.currentUserId(), date);
     }
 
     @PatchMapping("/{id}")
-    MealLogResponse update(@RequestHeader("X-User-Id") UUID userId,
-                           @PathVariable UUID id,
+    MealLogResponse update(@PathVariable UUID id,
                            @Valid @RequestBody UpdateMealLogRequest request) {
-        return service.updateMealLog(userId, id, request);
+        return service.updateMealLog(SecurityUtils.currentUserId(), id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@RequestHeader("X-User-Id") UUID userId, @PathVariable UUID id) {
-        service.deleteMealLog(userId, id);
+    void delete(@PathVariable UUID id) {
+        service.deleteMealLog(SecurityUtils.currentUserId(), id);
     }
 
     @PostMapping("/{id}/items")
     @ResponseStatus(HttpStatus.CREATED)
-    MealItemResponse addItem(@RequestHeader("X-User-Id") UUID userId,
-                             @PathVariable UUID id,
+    MealItemResponse addItem(@PathVariable UUID id,
                              @Valid @RequestBody AddMealItemRequest request) {
-        return service.addItem(userId, id, request);
+        return service.addItem(SecurityUtils.currentUserId(), id, request);
     }
 
     @DeleteMapping("/{id}/items/{itemId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void removeItem(@RequestHeader("X-User-Id") UUID userId,
-                    @PathVariable UUID id,
-                    @PathVariable UUID itemId) {
-        service.removeItem(userId, id, itemId);
+    void removeItem(@PathVariable UUID id, @PathVariable UUID itemId) {
+        service.removeItem(SecurityUtils.currentUserId(), id, itemId);
     }
 }

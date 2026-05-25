@@ -30,11 +30,15 @@ public class User {
     @Column(name = "goal_type", length = 50)
     private GoalType goalType;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash = "";
+
     protected User() {}
 
-    public User(String name, String email, Integer age, BigDecimal weightKg, BigDecimal heightCm, GoalType goalType) {
+    public User(String name, String email, String passwordHash, Integer age, BigDecimal weightKg, BigDecimal heightCm, GoalType goalType) {
         this.name = name;
         this.email = email;
+        this.passwordHash = passwordHash;
         this.age = age;
         this.weightKg = weightKg;
         this.heightCm = heightCm;
@@ -56,4 +60,5 @@ public class User {
     public BigDecimal getWeightKg() { return weightKg; }
     public BigDecimal getHeightCm() { return heightCm; }
     public GoalType getGoalType() { return goalType; }
+    public String getPasswordHash() { return passwordHash; }
 }

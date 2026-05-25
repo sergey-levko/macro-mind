@@ -1,5 +1,6 @@
 package com.epam.macromind.advice;
 
+import com.epam.macromind.auth.JwtService;
 import com.epam.macromind.common.GlobalExceptionHandler;
 import com.epam.macromind.user.UserNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -23,12 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AiAdviceController.class)
 @Import(GlobalExceptionHandler.class)
+@WithMockUser(username = "00000000-0000-0000-0000-000000000001")
 class AiAdviceControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean AiAdviceService adviceService;
+    @MockitoBean JwtService jwtService;
 
-    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID ADVICE_ID = UUID.randomUUID();
     private static final LocalDate TODAY = LocalDate.of(2026, 5, 20);
 
@@ -43,7 +47,6 @@ class AiAdviceControllerTest {
         when(adviceService.generateAdvice(eq(USER_ID), any())).thenReturn(SAMPLE_RESPONSE);
 
         mvc.perform(post("/api/v1/advice")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_BODY))
                 .andExpect(status().isCreated())
@@ -54,7 +57,6 @@ class AiAdviceControllerTest {
     @Test
     void generateAdvice_missingFields_returns400() throws Exception {
         mvc.perform(post("/api/v1/advice")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -66,7 +68,6 @@ class AiAdviceControllerTest {
                 .thenThrow(new UserNotFoundException(USER_ID));
 
         mvc.perform(post("/api/v1/advice")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_BODY))
                 .andExpect(status().isNotFound());
@@ -78,7 +79,6 @@ class AiAdviceControllerTest {
                 .thenThrow(new NoGoalForAdviceException(USER_ID));
 
         mvc.perform(post("/api/v1/advice")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_BODY))
                 .andExpect(status().isBadRequest());
@@ -105,8 +105,7 @@ class AiAdviceControllerTest {
     void listAdvice_noFilters_returns200() throws Exception {
         when(adviceService.listAdvice(USER_ID, null, null)).thenReturn(List.of(SAMPLE_RESPONSE));
 
-        mvc.perform(get("/api/v1/advice")
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(get("/api/v1/advice"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].adviceType").value("DAILY"));
     }
