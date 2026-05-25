@@ -121,7 +121,7 @@ class NutritionalGoalServiceTest {
     @Test
     void generateGoal_success_returnssuggestion() {
         UUID userId = UUID.randomUUID();
-        User user = new User("Alice", "alice@example.com", 30,
+        User user = new User("Alice", "alice@example.com", "", 30,
                 new BigDecimal("70"), new BigDecimal("175"), GoalType.LOSE_WEIGHT);
         GoalSuggestionResponse suggestion = new GoalSuggestionResponse(
                 new BigDecimal("1800"), new BigDecimal("140"),
@@ -142,7 +142,7 @@ class NutritionalGoalServiceTest {
     @Test
     void generateGoal_promptContainsProfileFields() {
         UUID userId = UUID.randomUUID();
-        User user = new User("Bob", "bob@example.com", 25,
+        User user = new User("Bob", "bob@example.com", "", 25,
                 new BigDecimal("80"), new BigDecimal("180"), GoalType.GAIN_MUSCLE);
         GoalSuggestionResponse suggestion = new GoalSuggestionResponse(
                 new BigDecimal("2500"), new BigDecimal("200"),
@@ -164,7 +164,7 @@ class NutritionalGoalServiceTest {
     @Test
     void generateGoal_aiParseFailure_throwsGoalGenerationException() {
         UUID userId = UUID.randomUUID();
-        User user = new User("Carol", "carol@example.com", 28,
+        User user = new User("Carol", "carol@example.com", "", 28,
                 new BigDecimal("65"), new BigDecimal("165"), GoalType.MAINTAIN_WEIGHT);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(chatClient.prompt()).thenReturn(requestSpec);
