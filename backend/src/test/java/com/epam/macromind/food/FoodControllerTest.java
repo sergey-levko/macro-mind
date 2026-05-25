@@ -1,6 +1,7 @@
 package com.epam.macromind.food;
 
 import com.epam.macromind.auth.JwtService;
+import com.epam.macromind.auth.SecurityConfig;
 import com.epam.macromind.common.GlobalExceptionHandler;
 import com.epam.macromind.user.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(FoodController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
 @WithMockUser(username = "00000000-0000-0000-0000-000000000001")
 class FoodControllerTest {
 

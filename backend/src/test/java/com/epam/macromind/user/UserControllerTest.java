@@ -1,6 +1,7 @@
 package com.epam.macromind.user;
 
 import com.epam.macromind.auth.JwtService;
+import com.epam.macromind.auth.SecurityConfig;
 import com.epam.macromind.common.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
 @WithMockUser(username = "00000000-0000-0000-0000-000000000001")
 class UserControllerTest {
 
