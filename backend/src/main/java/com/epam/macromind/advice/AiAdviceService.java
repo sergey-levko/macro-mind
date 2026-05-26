@@ -70,6 +70,16 @@ class AiAdviceService {
         return new GenerateAdviceResult(toResponse(advice), true);
     }
 
+    @Transactional
+    void deleteAdvice(UUID userId, UUID id) {
+        var advice = adviceRepository.findById(id)
+                .orElseThrow(() -> new AdviceNotFoundException(id));
+        if (!advice.getUserId().equals(userId)) {
+            throw new AdviceNotFoundException(id);
+        }
+        adviceRepository.deleteById(id);
+    }
+
     @Transactional(readOnly = true)
     AiAdviceResponse getAdvice(UUID id) {
         return adviceRepository.findById(id)

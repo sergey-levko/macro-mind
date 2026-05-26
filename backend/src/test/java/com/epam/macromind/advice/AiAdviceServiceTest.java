@@ -152,6 +152,37 @@ class AiAdviceServiceTest {
     }
 
     @Test
+    void deleteAdvice_success() {
+        var advice = sampleCompletedAdvice();
+        when(adviceRepository.findById(advice.getId())).thenReturn(Optional.of(advice));
+
+        service.deleteAdvice(userId, advice.getId());
+
+        verify(adviceRepository).deleteById(advice.getId());
+    }
+
+    @Test
+    void deleteAdvice_notFound_throws404() {
+        UUID id = UUID.randomUUID();
+        when(adviceRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteAdvice(userId, id))
+                .isInstanceOf(AdviceNotFoundException.class);
+        verify(adviceRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteAdvice_wrongOwner_throws404() {
+        var advice = sampleCompletedAdvice();
+        UUID otherId = UUID.randomUUID();
+        when(adviceRepository.findById(advice.getId())).thenReturn(Optional.of(advice));
+
+        assertThatThrownBy(() -> service.deleteAdvice(otherId, advice.getId()))
+                .isInstanceOf(AdviceNotFoundException.class);
+        verify(adviceRepository, never()).deleteById(any());
+    }
+
+    @Test
     void listAdvice_noFilters_returnsAll() {
         when(adviceRepository.findByUserId(userId)).thenReturn(List.of(sampleCompletedAdvice()));
 
