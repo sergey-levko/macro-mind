@@ -74,7 +74,7 @@ class MealService {
             sourceLogs = sourceLogs.stream().filter(l -> l.getMealType() == mealType).toList();
         }
         if (sourceLogs.isEmpty()) return List.of();
-        Instant targetLoggedAt = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant targetLoggedAt = Instant.now();
         Set<UUID> foodIds = sourceLogs.stream()
                 .flatMap(l -> l.getItems().stream())
                 .map(MealItem::getFoodId)

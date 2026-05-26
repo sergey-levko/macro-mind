@@ -14,6 +14,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
@@ -160,7 +162,10 @@ class MealIntegrationTest extends AbstractIntegrationTest {
         String token = register().accessToken();
         UUID foodId = createFood(token);
 
-        String log1Body = "{\"mealType\":\"BREAKFAST\",\"loggedAt\":\"2024-01-01T00:00:00Z\"}";
+        String yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1).toString();
+        String today = LocalDate.now(ZoneOffset.UTC).toString();
+
+        String log1Body = "{\"mealType\":\"BREAKFAST\",\"loggedAt\":\"" + yesterday + "T00:00:00Z\"}";
         ResponseEntity<MealLogResponse> log1 = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
                 new HttpEntity<>(log1Body, headersFor(token)), MealLogResponse.class);
@@ -168,7 +173,7 @@ class MealIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}", headersFor(token)),
                 MealItemResponse.class);
 
-        String log2Body = "{\"mealType\":\"LUNCH\",\"loggedAt\":\"2024-01-01T00:00:00Z\"}";
+        String log2Body = "{\"mealType\":\"LUNCH\",\"loggedAt\":\"" + yesterday + "T00:00:00Z\"}";
         ResponseEntity<MealLogResponse> log2 = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
                 new HttpEntity<>(log2Body, headersFor(token)), MealLogResponse.class);
@@ -178,17 +183,17 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<MealLogSummaryResponse[]> copied = restTemplate.exchange(
                 url("/api/v1/meal-logs/copy-previous-day"), HttpMethod.POST,
-                new HttpEntity<>("{\"date\":\"2024-01-02\"}", headersFor(token)),
+                new HttpEntity<>("{\"date\":\"" + today + "\"}", headersFor(token)),
                 MealLogSummaryResponse[].class);
 
         assertThat(copied.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(copied.getBody()).hasSize(2);
 
-        ResponseEntity<MealLogSummaryResponse[]> day2Logs = restTemplate.exchange(
-                url("/api/v1/meal-logs?date=2024-01-02"), HttpMethod.GET,
+        ResponseEntity<MealLogSummaryResponse[]> todayLogs = restTemplate.exchange(
+                url("/api/v1/meal-logs?date=" + today), HttpMethod.GET,
                 new HttpEntity<>(headersFor(token)), MealLogSummaryResponse[].class);
 
-        assertThat(day2Logs.getBody()).hasSize(2);
+        assertThat(todayLogs.getBody()).hasSize(2);
     }
 
     @Test
