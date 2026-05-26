@@ -44,8 +44,9 @@ class AiAdviceControllerTest {
             "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";
 
     @Test
-    void generateAdvice_validRequest_returns201() throws Exception {
-        when(adviceService.generateAdvice(eq(USER_ID), any())).thenReturn(SAMPLE_RESPONSE);
+    void generateAdvice_newRecord_returns201() throws Exception {
+        when(adviceService.generateAdvice(eq(USER_ID), any()))
+                .thenReturn(new GenerateAdviceResult(SAMPLE_RESPONSE, true));
 
         mvc.perform(post("/api/v1/advice")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -53,6 +54,18 @@ class AiAdviceControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.userId").value(USER_ID.toString()))
                 .andExpect(jsonPath("$.adviceType").value("DAILY"));
+    }
+
+    @Test
+    void generateAdvice_duplicateRecord_returns200() throws Exception {
+        when(adviceService.generateAdvice(eq(USER_ID), any()))
+                .thenReturn(new GenerateAdviceResult(SAMPLE_RESPONSE, false));
+
+        mvc.perform(post("/api/v1/advice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ADVICE_ID.toString()));
     }
 
     @Test

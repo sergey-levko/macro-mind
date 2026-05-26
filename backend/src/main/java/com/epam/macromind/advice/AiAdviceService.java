@@ -33,7 +33,15 @@ class AiAdviceService {
         this.promptBuilder = promptBuilder;
     }
 
-    AiAdviceResponse generateAdvice(UUID userId, GenerateAdviceRequest request) {
+    GenerateAdviceResult generateAdvice(UUID userId, GenerateAdviceRequest request) {
+        if (!request.preview()) {
+            var existing = adviceRepository
+                    .findByUserIdAndAdviceTypeAndPeriodStart(userId, request.adviceType(), request.periodStart());
+            if (!existing.isEmpty()) {
+                return new GenerateAdviceResult(toResponse(existing.get(0)), false);
+            }
+        }
+
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         var goal = goalRepository.findByUserId(userId)
@@ -49,12 +57,14 @@ class AiAdviceService {
                 .content();
 
         if (request.preview()) {
-            return new AiAdviceResponse(null, userId, request.adviceType(), request.periodStart(), content, null);
+            return new GenerateAdviceResult(
+                    new AiAdviceResponse(null, userId, request.adviceType(), request.periodStart(), content, null),
+                    false);
         }
 
         var advice = adviceRepository.save(
                 new AiAdvice(userId, request.adviceType(), content, request.periodStart()));
-        return toResponse(advice);
+        return new GenerateAdviceResult(toResponse(advice), true);
     }
 
     @Transactional(readOnly = true)

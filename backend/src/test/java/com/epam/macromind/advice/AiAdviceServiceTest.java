@@ -51,6 +51,8 @@ class AiAdviceServiceTest {
         var user = sampleUser();
         var goal = sampleGoal();
         var saved = sampleAdvice();
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+                .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(goal));
         when(promptBuilder.buildSystemPrompt(user, goal)).thenReturn("sys");
@@ -62,30 +64,71 @@ class AiAdviceServiceTest {
         when(callResponseSpec.content()).thenReturn("Eat more protein.");
         when(adviceRepository.save(any())).thenReturn(saved);
 
-        AiAdviceResponse result = service.generateAdvice(userId, dailyRequest);
+        GenerateAdviceResult result = service.generateAdvice(userId, dailyRequest);
 
-        assertThat(result.userId()).isEqualTo(userId);
-        assertThat(result.adviceType()).isEqualTo(AdviceType.DAILY);
+        assertThat(result.response().userId()).isEqualTo(userId);
+        assertThat(result.response().adviceType()).isEqualTo(AdviceType.DAILY);
+        assertThat(result.created()).isTrue();
         verify(adviceRepository).save(any());
     }
 
     @Test
+    void generateAdvice_duplicateNonPreview_returnsExistingWithoutCallingAI() {
+        var existing = sampleAdvice();
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+                .thenReturn(List.of(existing));
+
+        GenerateAdviceResult result = service.generateAdvice(userId, dailyRequest);
+
+        assertThat(result.created()).isFalse();
+        assertThat(result.response().id()).isEqualTo(existing.getId());
+        verifyNoInteractions(chatClient, userRepository, goalRepository);
+        verify(adviceRepository, never()).save(any());
+    }
+
+    @Test
+    void generateAdvice_duplicatePreview_callsAIWithoutSaving() {
+        var previewRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser()));
+        when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(sampleGoal()));
+        when(promptBuilder.buildSystemPrompt(any(), any())).thenReturn("sys");
+        when(promptBuilder.buildUserPrompt(userId, AdviceType.DAILY, today)).thenReturn("usr");
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system("sys")).thenReturn(requestSpec);
+        when(requestSpec.user("usr")).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.content()).thenReturn("Fresh preview.");
+
+        GenerateAdviceResult result = service.generateAdvice(userId, previewRequest);
+
+        assertThat(result.created()).isFalse();
+        assertThat(result.response().content()).isEqualTo("Fresh preview.");
+        assertThat(result.response().id()).isNull();
+        verify(adviceRepository, never()).save(any());
+        verify(adviceRepository, never()).findByUserIdAndAdviceTypeAndPeriodStart(any(), any(), any());
+    }
+
+    @Test
     void generateAdvice_userNotFound_throws404() {
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+                .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.generateAdvice(userId, dailyRequest))
                 .isInstanceOf(UserNotFoundException.class);
-        verifyNoInteractions(adviceRepository);
+        verify(adviceRepository, never()).save(any());
     }
 
     @Test
     void generateAdvice_noGoal_throws400() {
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+                .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser()));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.generateAdvice(userId, dailyRequest))
                 .isInstanceOf(NoGoalForAdviceException.class);
-        verifyNoInteractions(adviceRepository);
+        verify(adviceRepository, never()).save(any());
     }
 
     @Test
