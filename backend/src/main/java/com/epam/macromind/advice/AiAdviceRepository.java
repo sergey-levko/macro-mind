@@ -10,9 +10,9 @@ interface AiAdviceRepository extends JpaRepository<AiAdvice, UUID> {
 
     List<AiAdvice> findByUserId(UUID userId);
 
-    List<AiAdvice> findByUserIdAndAdviceType(UUID userId, AdviceType adviceType);
+    List<AiAdvice> findByUserIdAndAdviceTypeOrderByCreatedAtDesc(UUID userId, AdviceType adviceType);
 
     List<AiAdvice> findByUserIdAndPeriodStart(UUID userId, LocalDate periodStart);
 
-    List<AiAdvice> findByUserIdAndAdviceTypeAndPeriodStart(UUID userId, AdviceType adviceType, LocalDate periodStart);
+    List<AiAdvice> findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(UUID userId, AdviceType adviceType, LocalDate periodStart);
 }

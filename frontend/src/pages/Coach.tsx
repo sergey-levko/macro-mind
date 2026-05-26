@@ -252,7 +252,7 @@ function InsightPanel({
       {insight && !preview && (
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
           <p className="text-xs text-gray-500 mb-3">
-            {type === 'WEEKLY' ? `Week of ${insight.periodStart}` : insight.periodStart}
+            {type === 'WEEKLY' ? formatWeekLabel(insight.periodStart) : insight.periodStart}
           </p>
           <InsightContent content={insight.content} />
         </div>
@@ -340,10 +340,23 @@ export default function Coach() {
       setDailyError(false)
       try {
         const daily = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`)
-        setDailyInsight(daily[0] ?? null)
+        if (daily.length > 0) {
+          setDailyInsight(daily[0])
+          setDailyLoading(false)
+        } else if (selectedDate === todayStr()) {
+          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY')
+          if (all.length > 0) {
+            setSelectedDate(all[0].periodStart)
+          } else {
+            setDailyInsight(null)
+            setDailyLoading(false)
+          }
+        } else {
+          setDailyInsight(null)
+          setDailyLoading(false)
+        }
       } catch {
         setDailyError(true)
-      } finally {
         setDailyLoading(false)
       }
     }
@@ -361,10 +374,23 @@ export default function Coach() {
       setWeeklyError(false)
       try {
         const weekly = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${selectedWeek}`)
-        setWeeklyInsight(weekly[0] ?? null)
+        if (weekly.length > 0) {
+          setWeeklyInsight(weekly[0])
+          setWeeklyLoading(false)
+        } else if (selectedWeek === mondayStr()) {
+          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY')
+          if (all.length > 0) {
+            setSelectedWeek(all[0].periodStart)
+          } else {
+            setWeeklyInsight(null)
+            setWeeklyLoading(false)
+          }
+        } else {
+          setWeeklyInsight(null)
+          setWeeklyLoading(false)
+        }
       } catch {
         setWeeklyError(true)
-      } finally {
         setWeeklyLoading(false)
       }
     }
