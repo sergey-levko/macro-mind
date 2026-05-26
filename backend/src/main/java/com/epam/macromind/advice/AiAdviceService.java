@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@Transactional
 class AiAdviceService {
 
     private final ChatClient chatClient;
