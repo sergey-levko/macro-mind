@@ -670,17 +670,19 @@ export default function MealLog() {
           Meal Log — {formatDateLabel(selectedDate)}
         </h1>
         <div className="flex items-center gap-2">
-          {copyMessage && (
+          {isToday && copyMessage && (
             <span className="text-xs text-gray-400">{copyMessage}</span>
           )}
-          <button
-            onClick={handleCopy}
-            disabled={copying}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
-            title="Copy previous day's meals"
-          >
-            {copying ? '…' : 'Copy previous day'}
-          </button>
+          {isToday && (
+            <button
+              onClick={handleCopy}
+              disabled={copying}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+              title="Copy yesterday's meals into today"
+            >
+              {copying ? '…' : 'Copy from yesterday'}
+            </button>
+          )}
           <button
             onClick={() => setSelectedDate(d => shiftDay(d, -1))}
             className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
