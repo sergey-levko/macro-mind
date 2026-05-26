@@ -130,4 +130,61 @@ class UserIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
+
+    @Test
+    void updatePassword_success_returns204AndLoginWorksWithNewPassword() {
+        AuthResponse auth = register(UUID.randomUUID().toString());
+        String email = auth.user().email();
+
+        String body = "{\"currentPassword\":\"password123\",\"newPassword\":\"newpassword456\"}";
+        ResponseEntity<Void> updated = restTemplate.exchange(
+                url("/api/v1/users/me/password"), HttpMethod.PUT,
+                new HttpEntity<>(body, headersFor(auth.token())), Void.class);
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String loginBody = "{\"email\":\"" + email + "\",\"password\":\"newpassword456\"}";
+        ResponseEntity<Map> login = restTemplate.exchange(
+                url("/api/v1/auth/login"), HttpMethod.POST,
+                new HttpEntity<>(loginBody, headers), Map.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(login.getBody()).containsKey("token");
+    }
+
+    @Test
+    void updatePassword_wrongCurrentPassword_returns401() {
+        AuthResponse auth = register(UUID.randomUUID().toString());
+
+        String body = "{\"currentPassword\":\"wrongpassword\",\"newPassword\":\"newpassword456\"}";
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/users/me/password"), HttpMethod.PUT,
+                new HttpEntity<>(body, headersFor(auth.token())), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void updatePassword_newPasswordTooShort_returns400() {
+        AuthResponse auth = register(UUID.randomUUID().toString());
+
+        String body = "{\"currentPassword\":\"password123\",\"newPassword\":\"short\"}";
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/users/me/password"), HttpMethod.PUT,
+                new HttpEntity<>(body, headersFor(auth.token())), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updatePassword_noToken_returns401() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"currentPassword\":\"password123\",\"newPassword\":\"newpassword456\"}";
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/v1/users/me/password"), HttpMethod.PUT,
+                new HttpEntity<>(body, headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 }
