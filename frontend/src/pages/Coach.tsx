@@ -30,12 +30,16 @@ function mondayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function shiftDay(iso: string, delta: number): string {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() + delta)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function formatDateLabel(iso: string): string {
   const today = todayStr()
   const d = new Date(iso + 'T12:00:00')
-  const yesterday = new Date(d)
-  yesterday.setDate(d.getDate() - 1)
-  const yIso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
+  const yIso = shiftDay(today, -1)
   const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
   if (iso === today) return `Today, ${dateStr}`
   if (iso === yIso) return `Yesterday, ${dateStr}`
@@ -87,10 +91,9 @@ const dayPickerClassNames = {
   outside: 'opacity-0 pointer-events-none',
 }
 
-function HistoryDatePicker({ selected, onSelect, onClear }: {
-  selected: string | null
+function DayNavDatePicker({ selected, onSelect }: {
+  selected: string
   onSelect: (iso: string) => void
-  onClear: () => void
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -107,34 +110,21 @@ function HistoryDatePicker({ selected, onSelect, onClear }: {
   }, [open])
 
   return (
-    <div ref={containerRef} className="relative flex items-center gap-1">
+    <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-          selected
-            ? 'bg-teal-600/20 border-teal-700 text-teal-300'
-            : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300'
-        }`}
-        title="Filter by date"
+        className="px-3 py-1.5 text-sm rounded-lg border bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-200 transition-colors"
+        title="Pick a date"
       >
-        {selected ? formatDateLabel(selected) : '📅 All dates'}
+        {formatDateLabel(selected)}
       </button>
-      {selected && (
-        <button
-          onClick={onClear}
-          className="text-gray-500 hover:text-gray-300 text-sm px-1 transition-colors"
-          title="Clear date filter"
-        >
-          ✕
-        </button>
-      )}
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50">
           <DayPicker
             mode="single"
             ISOWeek
-            selected={selected ? new Date(selected + 'T12:00:00') : undefined}
-            defaultMonth={selected ? new Date(selected + 'T12:00:00') : new Date()}
+            selected={new Date(selected + 'T12:00:00')}
+            defaultMonth={new Date(selected + 'T12:00:00')}
             onSelect={date => {
               if (date) {
                 const y = date.getFullYear()
@@ -246,7 +236,8 @@ function InsightPanel({
 
 export default function Coach() {
   const [tab, setTab] = useState<'chat' | 'insights'>('chat')
-  const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly' | 'history'>('daily')
+  const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly'>('daily')
+  const [selectedDate, setSelectedDate] = useState(todayStr())
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -267,20 +258,13 @@ export default function Coach() {
   const [needGoalDaily, setNeedGoalDaily] = useState(false)
   const [needGoalWeekly, setNeedGoalWeekly] = useState(false)
 
-  const [history, setHistory] = useState<AdviceResponse[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DAILY' | 'WEEKLY'>('ALL')
-  const [historyDate, setHistoryDate] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deleteInProgress, setDeleteInProgress] = useState(false)
-
   useEffect(() => {
     async function loadInsights() {
       setInsightsLoading(true)
       setInsightsError(false)
       try {
         const [daily, weekly] = await Promise.all([
-          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${todayStr()}`),
+          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`),
           api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${mondayStr()}`),
         ])
         setDailyInsight(daily[0] ?? null)
@@ -292,20 +276,12 @@ export default function Coach() {
       }
     }
     loadInsights()
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => {
-    if (insightPeriod !== 'history') return
-    setHistoryLoading(true)
-    const params = new URLSearchParams()
-    if (historyFilter !== 'ALL') params.set('adviceType', historyFilter)
-    if (historyDate) params.set('periodStart', historyDate)
-    const qs = params.toString()
-    api.get<AdviceResponse[]>(`/api/v1/advice${qs ? `?${qs}` : ''}`)
-      .then(data => setHistory(data.sort((a, b) => b.periodStart.localeCompare(a.periodStart) || b.createdAt.localeCompare(a.createdAt))))
-      .catch(() => {})
-      .finally(() => setHistoryLoading(false))
-  }, [insightPeriod, historyFilter, historyDate])
+    setPreviewDaily(null)
+    setNeedGoalDaily(false)
+  }, [selectedDate])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -320,7 +296,7 @@ export default function Coach() {
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
-        periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+        periodStart: type === 'DAILY' ? selectedDate : mondayStr(),
         preview: true,
       })
       setPreview(result.content)
@@ -340,26 +316,13 @@ export default function Coach() {
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
-        periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+        periodStart: type === 'DAILY' ? selectedDate : mondayStr(),
         content,
       })
       setInsight(result)
       setPreview(null)
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function confirmDelete(id: string) {
-    setDeleteInProgress(true)
-    try {
-      await api.delete(`/api/v1/advice/${id}`)
-      setHistory(prev => prev.filter(item => item.id !== id))
-      if (dailyInsight?.id === id) setDailyInsight(null)
-      if (weeklyInsight?.id === id) setWeeklyInsight(null)
-    } finally {
-      setDeletingId(null)
-      setDeleteInProgress(false)
     }
   }
 
@@ -390,17 +353,6 @@ export default function Coach() {
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       active ? 'bg-teal-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
     }`
-
-  const filterBtnCls = (active: boolean) =>
-    `px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-      active ? 'bg-teal-600/20 border-teal-700 text-teal-300' : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400'
-    }`
-
-  const groupedHistory = history.reduce<Record<string, AdviceResponse[]>>((acc, item) => {
-    ;(acc[item.periodStart] ??= []).push(item)
-    return acc
-  }, {})
-  const historyDays = Object.keys(groupedHistory).sort((a, b) => b.localeCompare(a))
 
   return (
     <div className="p-8 max-w-4xl space-y-6">
@@ -481,31 +433,50 @@ export default function Coach() {
           <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-xl p-1 w-fit">
             <button className={pillCls(insightPeriod === 'daily')} onClick={() => setInsightPeriod('daily')}>Daily</button>
             <button className={pillCls(insightPeriod === 'weekly')} onClick={() => setInsightPeriod('weekly')}>Weekly</button>
-            <button className={pillCls(insightPeriod === 'history')} onClick={() => setInsightPeriod('history')}>History</button>
           </div>
 
-          {insightsLoading && insightPeriod !== 'history' ? (
+          {insightsLoading ? (
             <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
               <p className="text-sm text-gray-500">Loading…</p>
             </div>
-          ) : insightsError && insightPeriod !== 'history' ? (
+          ) : insightsError ? (
             <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
               <p className="text-sm text-red-400">Could not load insights.</p>
             </div>
           ) : insightPeriod === 'daily' ? (
-            <InsightPanel
-              type="DAILY"
-              periodLabel="today"
-              insight={dailyInsight}
-              preview={previewDaily}
-              generating={generatingDaily}
-              saving={savingDaily}
-              needGoal={needGoalDaily}
-              onGenerate={() => generateInsight('DAILY')}
-              onSave={() => saveInsight('DAILY')}
-              onDiscard={() => setPreviewDaily(null)}
-            />
-          ) : insightPeriod === 'weekly' ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors text-sm"
+                  title="Previous day"
+                >
+                  ←
+                </button>
+                <DayNavDatePicker selected={selectedDate} onSelect={setSelectedDate} />
+                <button
+                  onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}
+                  disabled={selectedDate === todayStr()}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors text-sm"
+                  title="Next day"
+                >
+                  →
+                </button>
+              </div>
+              <InsightPanel
+                type="DAILY"
+                periodLabel={formatDateLabel(selectedDate).toLowerCase()}
+                insight={dailyInsight}
+                preview={previewDaily}
+                generating={generatingDaily}
+                saving={savingDaily}
+                needGoal={needGoalDaily}
+                onGenerate={() => generateInsight('DAILY')}
+                onSave={() => saveInsight('DAILY')}
+                onDiscard={() => setPreviewDaily(null)}
+              />
+            </div>
+          ) : (
             <InsightPanel
               type="WEEKLY"
               periodLabel="this week"
@@ -518,84 +489,6 @@ export default function Coach() {
               onSave={() => saveInsight('WEEKLY')}
               onDiscard={() => setPreviewWeekly(null)}
             />
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <HistoryDatePicker
-                  selected={historyDate}
-                  onSelect={setHistoryDate}
-                  onClear={() => setHistoryDate(null)}
-                />
-                <div className="flex gap-1">
-                  <button className={filterBtnCls(historyFilter === 'ALL')} onClick={() => setHistoryFilter('ALL')}>All</button>
-                  <button className={filterBtnCls(historyFilter === 'DAILY')} onClick={() => setHistoryFilter('DAILY')}>Daily</button>
-                  <button className={filterBtnCls(historyFilter === 'WEEKLY')} onClick={() => setHistoryFilter('WEEKLY')}>Weekly</button>
-                </div>
-              </div>
-
-              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-                {historyLoading ? (
-                  <p className="text-sm text-gray-500">Loading history…</p>
-                ) : historyDays.length === 0 ? (
-                  <p className="text-sm text-gray-500">No saved insights found.</p>
-                ) : (
-                  <div className="space-y-8">
-                    {historyDays.map(day => (
-                      <div key={day}>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-                          {formatDateLabel(day)}
-                        </p>
-                        <div className="space-y-6">
-                          {groupedHistory[day].map(item => (
-                            <div key={item.id} className="border-b border-gray-800 pb-6 last:border-0 last:pb-0">
-                              <div className="flex items-center justify-between mb-3">
-                                <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  item.adviceType === 'DAILY'
-                                    ? 'bg-teal-900/50 text-teal-400'
-                                    : 'bg-purple-900/50 text-purple-400'
-                                }`}>
-                                  {item.adviceType === 'DAILY' ? 'Daily' : 'Weekly'}
-                                </span>
-                                {deletingId === item.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-400">Delete?</span>
-                                    <button
-                                      onClick={() => confirmDelete(item.id)}
-                                      disabled={deleteInProgress}
-                                      className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded transition-colors"
-                                    >
-                                      {deleteInProgress ? '…' : 'Confirm'}
-                                    </button>
-                                    <button
-                                      onClick={() => setDeletingId(null)}
-                                      disabled={deleteInProgress}
-                                      className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => setDeletingId(item.id)}
-                                    className="text-gray-600 hover:text-red-400 transition-colors p-1"
-                                    title="Delete insight"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                              <InsightContent content={item.content} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           )}
         </div>
       )}
