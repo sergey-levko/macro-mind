@@ -45,6 +45,10 @@ public class User {
         this.goalType = goalType;
     }
 
+    void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     void update(String name, Integer age, BigDecimal weightKg, BigDecimal heightCm, GoalType goalType) {
         this.name = name;
         this.age = age;

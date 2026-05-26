@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../lib/api'
+import { api, getToken } from '../lib/api'
 import { useToast } from '../components/Toast'
 import type { UserResponse, GoalType } from '../lib/types'
 
@@ -20,6 +20,9 @@ export default function Profile() {
     goalType: 'MAINTAIN_WEIGHT' as GoalType,
   })
   const [saving, setSaving] = useState(false)
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' })
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState<string | null>(null)
 
   useEffect(() => {
     api.get<UserResponse>('/api/v1/users/me').then(u => {
@@ -51,6 +54,41 @@ export default function Profile() {
       showToast('Failed to update profile, please try again')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError(null)
+    if (pwForm.newPassword !== pwForm.confirmNewPassword) {
+      setPwError('New passwords do not match')
+      return
+    }
+    setPwSaving(true)
+    try {
+      const res = await fetch('/api/v1/users/me/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+      })
+      if (res.status === 204) {
+        showToast('Password updated', 'success')
+        setPwForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' })
+      } else if (res.status === 401) {
+        setPwError('Current password is incorrect')
+      } else if (res.status === 400) {
+        const data = await res.json().catch(() => null)
+        setPwError(data?.message ?? 'Invalid input')
+      } else {
+        setPwError('Failed to update password, please try again')
+      }
+    } catch {
+      setPwError('Failed to update password, please try again')
+    } finally {
+      setPwSaving(false)
     }
   }
 
@@ -136,6 +174,53 @@ export default function Profile() {
             className="w-full py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors mt-2"
           >
             {saving ? 'Saving…' : 'Save'}
+          </button>
+        </form>
+      </div>
+      <h2 className="text-lg font-semibold text-white mt-8 mb-4">Change Password</h2>
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          {pwError && (
+            <p className="text-sm text-red-400">{pwError}</p>
+          )}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Current Password</label>
+            <input
+              type="password"
+              className={inputCls}
+              value={pwForm.currentPassword}
+              onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">New Password</label>
+            <input
+              type="password"
+              className={inputCls}
+              value={pwForm.newPassword}
+              onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+              required
+              minLength={8}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Confirm New Password</label>
+            <input
+              type="password"
+              className={inputCls}
+              value={pwForm.confirmNewPassword}
+              onChange={e => setPwForm(f => ({ ...f, confirmNewPassword: e.target.value }))}
+              required
+              minLength={8}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={pwSaving}
+            className="w-full py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors mt-2"
+          >
+            {pwSaving ? 'Updating…' : 'Update Password'}
           </button>
         </form>
       </div>

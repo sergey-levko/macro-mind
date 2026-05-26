@@ -1,11 +1,13 @@
 package com.epam.macromind.user;
 
+import com.epam.macromind.auth.InvalidCredentialsException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -14,13 +16,16 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     UserRepository repository;
+
+    @Mock
+    PasswordEncoder passwordEncoder;
 
     @InjectMocks
     UserService service;
@@ -99,5 +104,43 @@ class UserServiceTest {
         assertThatThrownBy(() -> service.updateUser(id, UPDATE_REQUEST))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessageContaining(id.toString());
+    }
+
+    @Test
+    void updatePassword_success_savesNewHash() {
+        UUID id = UUID.randomUUID();
+        User user = new User("Alice", "alice@example.com", "$2a$hash", 30,
+                new BigDecimal("65.0"), new BigDecimal("170.0"), GoalType.MAINTAIN_WEIGHT);
+        when(repository.findById(id)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("oldpass", "$2a$hash")).thenReturn(true);
+        when(passwordEncoder.encode("newpass123")).thenReturn("$2a$newhash");
+        when(repository.save(user)).thenReturn(user);
+
+        service.updatePassword(id, "oldpass", "newpass123");
+
+        assertThat(user.getPasswordHash()).isEqualTo("$2a$newhash");
+        verify(repository).save(user);
+    }
+
+    @Test
+    void updatePassword_wrongCurrentPassword_throwsInvalidCredentials() {
+        UUID id = UUID.randomUUID();
+        User user = new User("Alice", "alice@example.com", "$2a$hash", 30,
+                new BigDecimal("65.0"), new BigDecimal("170.0"), GoalType.MAINTAIN_WEIGHT);
+        when(repository.findById(id)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongpass", "$2a$hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.updatePassword(id, "wrongpass", "newpass123"))
+                .isInstanceOf(InvalidCredentialsException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void updatePassword_unknownUser_throwsUserNotFoundException() {
+        UUID id = UUID.randomUUID();
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updatePassword(id, "any", "newpass123"))
+                .isInstanceOf(UserNotFoundException.class);
     }
 }
