@@ -76,6 +76,13 @@ class FoodService {
         foodRepository.delete(food);
     }
 
+    List<FoodResponse> getRecentFoods(UUID userId, int limit) {
+        int capped = Math.min(limit, 10);
+        return foodRepository.findRecentByUserId(userId, capped).stream()
+                .map(FoodResponse::from)
+                .toList();
+    }
+
     List<UsdaFoodResult> searchUsda(UUID userId, String query) {
         validateUserExists(userId);
         return usdaFoodClient.search(query);
