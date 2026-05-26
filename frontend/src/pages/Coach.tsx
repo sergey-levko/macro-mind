@@ -550,7 +550,7 @@ export default function Coach() {
                 {selectedDate !== todayStr() && (
                   <button
                     onClick={() => setSelectedDate(todayStr())}
-                    className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs rounded-lg transition-colors"
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-sm rounded-lg transition-colors"
                   >
                     Today
                   </button>
@@ -601,7 +601,7 @@ export default function Coach() {
                 {selectedWeek !== mondayStr() && (
                   <button
                     onClick={() => setSelectedWeek(mondayStr())}
-                    className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs rounded-lg transition-colors"
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-sm rounded-lg transition-colors"
                   >
                     This week
                   </button>
