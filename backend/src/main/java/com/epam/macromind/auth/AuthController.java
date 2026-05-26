@@ -24,4 +24,15 @@ class AuthController {
     AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    @PostMapping("/refresh")
+    RefreshResponse refresh(@RequestBody RefreshRequest request) {
+        return authService.refresh(request.refreshToken());
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void logout(@RequestBody RefreshRequest request) {
+        authService.logout(request.refreshToken());
+    }
 }

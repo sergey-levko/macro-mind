@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: User registration
 The system SHALL allow a new user to register with a unique email address and a password. On success the system SHALL return a signed short-lived access token (15 min TTL), a long-lived opaque refresh token (30 day TTL), and the created user's profile.
 
@@ -27,6 +29,8 @@ The system SHALL authenticate an existing user by email and password and return 
 #### Scenario: Unknown email
 - **WHEN** a POST request is sent to `/api/v1/auth/login` with an email that does not exist
 - **THEN** the system returns HTTP 401 Unauthorized (same response as wrong password to prevent user enumeration)
+
+## ADDED Requirements
 
 ### Requirement: Token refresh
 The system SHALL allow a client holding a valid refresh token to obtain a new access token and a rotated refresh token without re-entering credentials.
@@ -60,26 +64,4 @@ The system SHALL allow an authenticated user to invalidate their current refresh
 
 #### Scenario: Logout without authentication
 - **WHEN** a POST request is sent to `/api/v1/auth/logout` with no or invalid `Authorization` header
-- **THEN** the system returns HTTP 401 Unauthorized
-
-### Requirement: JWT validation on protected endpoints
-The system SHALL validate the JWT on every request to `/api/v1/**` except `/api/v1/auth/**`.
-
-#### Scenario: Valid token
-- **WHEN** a request includes `Authorization: Bearer <valid-token>` header
-- **THEN** the system extracts `userId` from the token's `sub` claim and processes the request normally
-
-#### Scenario: Missing token
-- **WHEN** a request to a protected endpoint has no `Authorization` header
-- **THEN** the system returns HTTP 401 Unauthorized
-
-#### Scenario: Expired or malformed token
-- **WHEN** a request includes an expired or malformed JWT
-- **THEN** the system returns HTTP 401 Unauthorized
-
-### Requirement: X-User-Id header removal
-The system SHALL derive the authenticated user's identity exclusively from the JWT. The `X-User-Id` request header SHALL no longer be accepted or trusted by any endpoint.
-
-#### Scenario: Request with only X-User-Id header
-- **WHEN** a request to a protected endpoint sends `X-User-Id` but no `Authorization` header
 - **THEN** the system returns HTTP 401 Unauthorized

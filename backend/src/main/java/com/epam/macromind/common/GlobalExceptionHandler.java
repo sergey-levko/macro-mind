@@ -3,6 +3,7 @@ package com.epam.macromind.common;
 import com.epam.macromind.advice.AdviceNotFoundException;
 import com.epam.macromind.advice.NoGoalForAdviceException;
 import com.epam.macromind.auth.InvalidCredentialsException;
+import com.epam.macromind.auth.InvalidRefreshTokenException;
 import com.epam.macromind.food.FoodAccessDeniedException;
 import com.epam.macromind.food.FoodInUseException;
 import com.epam.macromind.goal.GoalGenerationException;
@@ -125,6 +126,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     Map<String, String> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    Map<String, String> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
         return Map.of("message", ex.getMessage());
     }
 

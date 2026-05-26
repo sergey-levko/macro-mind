@@ -72,7 +72,7 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void createAndRetrieve_fullRoundTrip() {
-        String token = register().token();
+        String token = register().accessToken();
 
         ResponseEntity<MealLogResponse> created = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,
@@ -94,7 +94,7 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void addItem_computesCorrectMacros() {
-        String token = register().token();
+        String token = register().accessToken();
         UUID foodId = createFood(token);
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
@@ -115,7 +115,7 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void listByDate_returnsOnlyThatDaysLogs() {
-        String token = register().token();
+        String token = register().accessToken();
         restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
                 new HttpEntity<>("{\"mealType\":\"DINNER\"}", headersFor(token)),
                 MealLogResponse.class);
@@ -130,7 +130,7 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void delete_removesLogAndItems() {
-        String token = register().token();
+        String token = register().accessToken();
         UUID foodId = createFood(token);
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
@@ -157,8 +157,8 @@ class MealIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void addItem_toAnotherUsersLog_returns403() {
-        String ownerToken = register().token();
-        String otherToken = register().token();
+        String ownerToken = register().accessToken();
+        String otherToken = register().accessToken();
 
         ResponseEntity<MealLogResponse> log = restTemplate.exchange(
                 url("/api/v1/meal-logs"), HttpMethod.POST,

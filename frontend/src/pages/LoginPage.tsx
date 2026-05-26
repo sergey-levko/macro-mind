@@ -44,7 +44,7 @@ export default function LoginPage() {
         return
       }
       const data: AuthResponse = await res.json()
-      login(data.token, data.user)
+      login(data.accessToken, data.refreshToken, data.user)
       navigate('/dashboard', { replace: true })
     } catch {
       setError('Network error — is the backend running?')
@@ -78,7 +78,7 @@ export default function LoginPage() {
         return
       }
       const data: AuthResponse = await res.json()
-      login(data.token, data.user)
+      login(data.accessToken, data.refreshToken, data.user)
       navigate('/dashboard', { replace: true })
     } catch {
       setError('Network error — is the backend running?')

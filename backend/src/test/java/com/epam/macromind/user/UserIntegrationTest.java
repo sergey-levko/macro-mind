@@ -56,12 +56,12 @@ class UserIntegrationTest extends AbstractIntegrationTest {
     @Test
     void register_and_retrieve_fullRoundTrip() {
         AuthResponse auth = register(UUID.randomUUID().toString());
-        assertThat(auth.token()).isNotBlank();
+        assertThat(auth.accessToken()).isNotBlank();
         assertThat(auth.user().email()).contains("@example.com");
 
         ResponseEntity<UserResponse> fetched = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(auth.token())), UserResponse.class);
+                new HttpEntity<>(headersFor(auth.accessToken())), UserResponse.class);
 
         assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(fetched.getBody().id()).isEqualTo(auth.user().id());
@@ -101,7 +101,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.PUT,
-                new HttpEntity<>(update, headersFor(auth.token())), UserResponse.class);
+                new HttpEntity<>(update, headersFor(auth.accessToken())), UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().name()).isEqualTo("Updated Name");
@@ -118,7 +118,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.PUT,
-                new HttpEntity<>(invalid, headersFor(auth.token())), Map.class);
+                new HttpEntity<>(invalid, headersFor(auth.accessToken())), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -139,7 +139,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
         String body = "{\"currentPassword\":\"password123\",\"newPassword\":\"newpassword456\"}";
         ResponseEntity<Void> updated = restTemplate.exchange(
                 url("/api/v1/users/me/password"), HttpMethod.PUT,
-                new HttpEntity<>(body, headersFor(auth.token())), Void.class);
+                new HttpEntity<>(body, headersFor(auth.accessToken())), Void.class);
         assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
         HttpHeaders headers = new HttpHeaders();
@@ -149,7 +149,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
                 url("/api/v1/auth/login"), HttpMethod.POST,
                 new HttpEntity<>(loginBody, headers), Map.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(login.getBody()).containsKey("token");
+        assertThat(login.getBody()).containsKey("accessToken");
     }
 
     @Test
@@ -159,7 +159,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
         String body = "{\"currentPassword\":\"wrongpassword\",\"newPassword\":\"newpassword456\"}";
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me/password"), HttpMethod.PUT,
-                new HttpEntity<>(body, headersFor(auth.token())), Map.class);
+                new HttpEntity<>(body, headersFor(auth.accessToken())), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
@@ -171,7 +171,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
         String body = "{\"currentPassword\":\"password123\",\"newPassword\":\"short\"}";
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me/password"), HttpMethod.PUT,
-                new HttpEntity<>(body, headersFor(auth.token())), Map.class);
+                new HttpEntity<>(body, headersFor(auth.accessToken())), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
