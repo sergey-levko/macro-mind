@@ -79,7 +79,7 @@ export default function LoginPage() {
       }
       const data: AuthResponse = await res.json()
       login(data.accessToken, data.refreshToken, data.user)
-      navigate('/dashboard', { replace: true })
+      navigate('/onboarding', { replace: true })
     } catch {
       setError('Network error — is the backend running?')
     } finally {
