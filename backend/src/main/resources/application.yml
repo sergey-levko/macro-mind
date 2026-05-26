@@ -17,6 +17,12 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
 
+  cache:
+    type: caffeine
+    cache-names: usda-food
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=24h
+
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}

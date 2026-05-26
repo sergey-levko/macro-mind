@@ -1,6 +1,7 @@
 package com.epam.macromind.food;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -38,7 +39,8 @@ class UsdaFoodClient {
         }
     }
 
-    UsdaFoodDto fetch(int fdcId) {
+    @Cacheable("usda-food")
+    public UsdaFoodDto fetch(int fdcId) {
         try {
             return restClient.get()
                     .uri("/fdc/v1/food/{fdcId}?api_key={key}", fdcId, apiKey)

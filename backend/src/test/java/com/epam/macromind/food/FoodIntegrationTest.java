@@ -5,11 +5,13 @@ import com.epam.macromind.auth.AuthResponse;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -47,6 +49,17 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private CacheManager cacheManager;
+
+    @BeforeEach
+    void clearCaches() {
+        cacheManager.getCacheNames().forEach(name -> {
+            var cache = cacheManager.getCache(name);
+            if (cache != null) cache.clear();
+        });
+    }
 
     private String url(String path) {
         return "http://localhost:" + port + path;
@@ -173,6 +186,39 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(headersFor(otherToken)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void importFood_sameId_cacheHit_callsUsdaApiOnce() {
+        String usdaResponse = """
+                {
+                  "fdcId": 99999,
+                  "description": "Cached Food",
+                  "foodNutrients": [
+                    {"nutrient": {"id": 1008}, "amount": 100.0},
+                    {"nutrient": {"id": 1003}, "amount": 10.0},
+                    {"nutrient": {"id": 1005}, "amount": 10.0},
+                    {"nutrient": {"id": 1004}, "amount": 5.0}
+                  ]
+                }
+                """;
+        wireMock.stubFor(get(urlPathMatching("/fdc/v1/food/99999"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(usdaResponse)));
+
+        wireMock.resetRequests();
+
+        String token1 = register();
+        restTemplate.exchange(url("/api/v1/foods/import"), HttpMethod.POST,
+                new HttpEntity<>("{\"fdcId\": 99999}", headersFor(token1)), FoodResponse.class);
+
+        String token2 = register();
+        restTemplate.exchange(url("/api/v1/foods/import"), HttpMethod.POST,
+                new HttpEntity<>("{\"fdcId\": 99999}", headersFor(token2)), FoodResponse.class);
+
+        wireMock.verify(1, getRequestedFor(urlPathMatching("/fdc/v1/food/99999")));
     }
 
     @Test
