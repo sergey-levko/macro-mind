@@ -119,6 +119,26 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void generateAdvice_duplicateNonPreview_returns200WithSameId() {
+        String token = register();
+        setGoal(token);
+
+        String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-21\"}";
+
+        ResponseEntity<AiAdviceResponse> first = restTemplate.exchange(
+                url("/api/v1/advice"), HttpMethod.POST,
+                new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID firstId = first.getBody().id();
+
+        ResponseEntity<AiAdviceResponse> second = restTemplate.exchange(
+                url("/api/v1/advice"), HttpMethod.POST,
+                new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(second.getBody().id()).isEqualTo(firstId);
+    }
+
+    @Test
     void generateAdvice_noGoal_returns400() {
         String token = register();
         String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";
