@@ -14,9 +14,13 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 class AdvicePromptBuilder {
@@ -65,14 +69,23 @@ class AdvicePromptBuilder {
 
         var start = periodStart.atStartOfDay(ZoneOffset.UTC).toInstant();
         var end = periodEnd.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, start, end);
+        List<MealLog> logs = mealLogRepository.findWithItemsByUserIdAndLoggedAtBetween(userId, start, end);
+
+        Set<UUID> foodIds = new HashSet<>();
+        for (MealLog log : logs) {
+            for (MealItem item : log.getItems()) {
+                foodIds.add(item.getFoodId());
+            }
+        }
+        Map<UUID, Food> foodMap = foodRepository.findAllById(foodIds).stream()
+                .collect(Collectors.toMap(Food::getId, Function.identity()));
 
         Map<LocalDate, DailyTotals> dailyMap = new HashMap<>();
         for (MealLog log : logs) {
             LocalDate day = log.getLoggedAt().atZone(ZoneOffset.UTC).toLocalDate();
             DailyTotals totals = dailyMap.computeIfAbsent(day, d -> new DailyTotals());
             for (MealItem item : log.getItems()) {
-                Food food = foodRepository.findById(item.getFoodId()).orElse(null);
+                Food food = foodMap.get(item.getFoodId());
                 if (food == null) continue;
                 BigDecimal factor = item.getQuantityG().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
                 totals.calories = totals.calories.add(safeMultiply(food.getCalories100g(), factor));

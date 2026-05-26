@@ -10,5 +10,6 @@ record AiAdviceResponse(
         AdviceType adviceType,
         LocalDate periodStart,
         String content,
+        AdviceStatus status,
         Instant createdAt
 ) {}

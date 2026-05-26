@@ -3,6 +3,7 @@ package com.epam.macromind.advice;
 import com.epam.macromind.common.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,9 +20,11 @@ class AiAdviceController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    AiAdviceResponse generateAdvice(@Valid @RequestBody GenerateAdviceRequest request) {
-        return adviceService.generateAdvice(SecurityUtils.currentUserId(), request);
+    ResponseEntity<AiAdviceResponse> generateAdvice(@Valid @RequestBody GenerateAdviceRequest request) {
+        GenerateAdviceResult result = adviceService.generateAdvice(SecurityUtils.currentUserId(), request);
+        return result.created()
+                ? ResponseEntity.status(HttpStatus.ACCEPTED).body(result.response())
+                : ResponseEntity.ok(result.response());
     }
 
     @GetMapping("/{id}")

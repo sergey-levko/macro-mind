@@ -38,21 +38,34 @@ class AiAdviceControllerTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 5, 20);
 
     private static final AiAdviceResponse SAMPLE_RESPONSE = new AiAdviceResponse(
-            ADVICE_ID, USER_ID, AdviceType.DAILY, TODAY, "Eat more protein.", Instant.now());
+            ADVICE_ID, USER_ID, AdviceType.DAILY, TODAY, "Eat more protein.", AdviceStatus.COMPLETED, Instant.now());
 
     private static final String VALID_BODY =
             "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";
 
     @Test
-    void generateAdvice_validRequest_returns201() throws Exception {
-        when(adviceService.generateAdvice(eq(USER_ID), any())).thenReturn(SAMPLE_RESPONSE);
+    void generateAdvice_newRecord_returns202() throws Exception {
+        when(adviceService.generateAdvice(eq(USER_ID), any()))
+                .thenReturn(new GenerateAdviceResult(SAMPLE_RESPONSE, true));
 
         mvc.perform(post("/api/v1/advice")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_BODY))
-                .andExpect(status().isCreated())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.userId").value(USER_ID.toString()))
                 .andExpect(jsonPath("$.adviceType").value("DAILY"));
+    }
+
+    @Test
+    void generateAdvice_duplicateRecord_returns200() throws Exception {
+        when(adviceService.generateAdvice(eq(USER_ID), any()))
+                .thenReturn(new GenerateAdviceResult(SAMPLE_RESPONSE, false));
+
+        mvc.perform(post("/api/v1/advice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ADVICE_ID.toString()));
     }
 
     @Test
