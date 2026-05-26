@@ -52,6 +52,11 @@ class FoodController {
         service.deleteFood(SecurityUtils.currentUserId(), id);
     }
 
+    @GetMapping("/recent")
+    List<FoodResponse> getRecent(@RequestParam(defaultValue = "10") int limit) {
+        return service.getRecentFoods(SecurityUtils.currentUserId(), limit);
+    }
+
     @GetMapping("/usda-search")
     List<UsdaFoodResult> searchUsda(@RequestParam String q) {
         try {
