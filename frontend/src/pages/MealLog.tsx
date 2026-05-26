@@ -212,6 +212,24 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
 
   return (
     <form onSubmit={handleAdd} className="mt-3 pt-3 border-t border-gray-800 space-y-2">
+      {recentFoods.length > 0 && !query && !selected && (
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Recent</p>
+          <div className="flex flex-wrap gap-1.5">
+            {recentFoods.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => { setSelected(f); setQuery(f.name) }}
+                className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded-md transition-colors truncate max-w-[160px]"
+                title={f.name}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div ref={containerRef} className="relative">
         <input
           type="text"
