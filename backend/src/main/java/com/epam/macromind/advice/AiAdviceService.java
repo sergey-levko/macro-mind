@@ -39,7 +39,7 @@ class AiAdviceService {
     GenerateAdviceResult generateAdvice(UUID userId, GenerateAdviceRequest request) {
         if (!request.preview()) {
             var existing = adviceRepository
-                    .findByUserIdAndAdviceTypeAndPeriodStart(userId, request.adviceType(), request.periodStart());
+                    .findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, request.adviceType(), request.periodStart());
             if (!existing.isEmpty()) {
                 return new GenerateAdviceResult(toResponse(existing.get(0)), false);
             }
@@ -96,7 +96,7 @@ class AiAdviceService {
     List<AiAdviceResponse> listAdvice(UUID userId, AdviceType adviceType, LocalDate periodStart) {
         List<AiAdvice> results;
         if (adviceType != null && periodStart != null) {
-            results = adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, adviceType, periodStart);
+            results = adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, adviceType, periodStart);
         } else if (adviceType != null) {
             results = adviceRepository.findByUserIdAndAdviceType(userId, adviceType);
         } else if (periodStart != null) {

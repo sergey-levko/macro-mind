@@ -52,7 +52,7 @@ class AiAdviceServiceTest {
         var user = sampleUser();
         var goal = sampleGoal();
         var saved = sampleAdvice();
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(goal));
@@ -74,7 +74,7 @@ class AiAdviceServiceTest {
     @Test
     void generateAdvice_duplicateNonPreview_returnsExistingWithoutCallingAI() {
         var existing = sampleCompletedAdvice();
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of(existing));
 
         GenerateAdviceResult result = service.generateAdvice(userId, dailyRequest);
@@ -105,7 +105,7 @@ class AiAdviceServiceTest {
         assertThat(result.response().status()).isEqualTo(AdviceStatus.COMPLETED);
         assertThat(result.response().id()).isNull();
         verify(adviceRepository, never()).save(any());
-        verify(adviceRepository, never()).findByUserIdAndAdviceTypeAndPeriodStart(any(), any(), any());
+        verify(adviceRepository, never()).findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(any(), any(), any());
         verifyNoInteractions(asyncAdviceGenerator);
     }
 
@@ -115,7 +115,7 @@ class AiAdviceServiceTest {
         var user = sampleUser();
         var goal = sampleGoal();
         var saved = sampleCompletedAdvice();
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(goal));
@@ -130,7 +130,7 @@ class AiAdviceServiceTest {
 
     @Test
     void generateAdvice_userNotFound_throws404() {
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
@@ -141,7 +141,7 @@ class AiAdviceServiceTest {
 
     @Test
     void generateAdvice_noGoal_throws400() {
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of());
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser()));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.empty());
@@ -224,13 +224,13 @@ class AiAdviceServiceTest {
 
     @Test
     void listAdvice_withAllFilters() {
-        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of(sampleCompletedAdvice()));
 
         List<AiAdviceResponse> results = service.listAdvice(userId, AdviceType.DAILY, today);
 
         assertThat(results).hasSize(1);
-        verify(adviceRepository).findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today);
+        verify(adviceRepository).findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today);
     }
 
     private User sampleUser() {
