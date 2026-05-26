@@ -205,6 +205,7 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
       setShowCreate(false)
       setDropdownOpen(false)
       onAdded()
+      api.get<Food[]>('/api/v1/foods/recent?limit=10').then(setRecentFoods).catch(() => {})
     } finally {
       setAdding(false)
     }
