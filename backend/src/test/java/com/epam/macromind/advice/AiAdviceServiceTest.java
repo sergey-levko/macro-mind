@@ -72,17 +72,23 @@ class AiAdviceServiceTest {
     }
 
     @Test
-    void generateAdvice_duplicateNonPreview_returnsExistingWithoutCallingAI() {
+    void generateAdvice_duplicateNonPreview_deletesExistingAndGeneratesNew() {
         var existing = sampleCompletedAdvice();
+        var saved = sampleAdvice();
         when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of(existing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser()));
+        when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(sampleGoal()));
+        when(promptBuilder.buildSystemPrompt(any(), any())).thenReturn("sys");
+        when(promptBuilder.buildUserPrompt(userId, AdviceType.DAILY, today)).thenReturn("usr");
+        when(adviceRepository.save(any())).thenReturn(saved);
 
         GenerateAdviceResult result = service.generateAdvice(userId, dailyRequest);
 
-        assertThat(result.created()).isFalse();
-        assertThat(result.response().id()).isEqualTo(existing.getId());
-        verifyNoInteractions(chatClient, userRepository, goalRepository, asyncAdviceGenerator);
-        verify(adviceRepository, never()).save(any());
+        assertThat(result.created()).isTrue();
+        verify(adviceRepository).deleteAll(List.of(existing));
+        verify(adviceRepository).save(any());
+        verify(asyncAdviceGenerator).complete(any(), eq("sys"), eq("usr"));
     }
 
     @Test

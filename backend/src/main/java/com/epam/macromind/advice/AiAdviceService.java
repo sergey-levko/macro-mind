@@ -36,12 +36,13 @@ class AiAdviceService {
         this.asyncAdviceGenerator = asyncAdviceGenerator;
     }
 
+    @Transactional
     GenerateAdviceResult generateAdvice(UUID userId, GenerateAdviceRequest request) {
         if (!request.preview()) {
             var existing = adviceRepository
                     .findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, request.adviceType(), request.periodStart());
             if (!existing.isEmpty()) {
-                return new GenerateAdviceResult(toResponse(existing.get(0)), false);
+                adviceRepository.deleteAll(existing);
             }
         }
 
