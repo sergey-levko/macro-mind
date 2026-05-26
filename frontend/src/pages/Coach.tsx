@@ -340,10 +340,24 @@ export default function Coach() {
       setDailyError(false)
       try {
         const daily = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`)
-        setDailyInsight(daily[0] ?? null)
+        if (daily.length > 0) {
+          setDailyInsight(daily[0])
+          setDailyLoading(false)
+        } else if (selectedDate === todayStr()) {
+          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY')
+          if (all.length > 0) {
+            const sorted = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            setSelectedDate(sorted[0].periodStart)
+          } else {
+            setDailyInsight(null)
+            setDailyLoading(false)
+          }
+        } else {
+          setDailyInsight(null)
+          setDailyLoading(false)
+        }
       } catch {
         setDailyError(true)
-      } finally {
         setDailyLoading(false)
       }
     }
@@ -361,10 +375,24 @@ export default function Coach() {
       setWeeklyError(false)
       try {
         const weekly = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${selectedWeek}`)
-        setWeeklyInsight(weekly[0] ?? null)
+        if (weekly.length > 0) {
+          setWeeklyInsight(weekly[0])
+          setWeeklyLoading(false)
+        } else if (selectedWeek === mondayStr()) {
+          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY')
+          if (all.length > 0) {
+            const sorted = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            setSelectedWeek(sorted[0].periodStart)
+          } else {
+            setWeeklyInsight(null)
+            setWeeklyLoading(false)
+          }
+        } else {
+          setWeeklyInsight(null)
+          setWeeklyLoading(false)
+        }
       } catch {
         setWeeklyError(true)
-      } finally {
         setWeeklyLoading(false)
       }
     }
