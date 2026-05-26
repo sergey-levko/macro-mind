@@ -65,6 +65,11 @@ class AiAdviceService {
                     false);
         }
 
+        if (request.content() != null) {
+            var advice = adviceRepository.save(new AiAdvice(userId, request.adviceType(), request.content(), request.periodStart()));
+            return new GenerateAdviceResult(toResponse(advice), true);
+        }
+
         var advice = adviceRepository.save(new AiAdvice(userId, request.adviceType(), request.periodStart()));
         asyncAdviceGenerator.complete(advice.getId(), systemPrompt, userPrompt);
         return new GenerateAdviceResult(toResponse(advice), true);

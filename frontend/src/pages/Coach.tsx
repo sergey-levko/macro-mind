@@ -9,6 +9,7 @@ interface AdviceResponse {
   adviceType: 'DAILY' | 'WEEKLY'
   periodStart: string
   content: string
+  status: 'PENDING' | 'COMPLETED' | 'FAILED'
   createdAt: string
 }
 
@@ -334,11 +335,13 @@ export default function Coach() {
     const setSaving = type === 'DAILY' ? setSavingDaily : setSavingWeekly
     const setPreview = type === 'DAILY' ? setPreviewDaily : setPreviewWeekly
     const setInsight = type === 'DAILY' ? setDailyInsight : setWeeklyInsight
+    const content = type === 'DAILY' ? previewDaily : previewWeekly
     setSaving(true)
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
         periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+        content,
       })
       setInsight(result)
       setPreview(null)
@@ -352,6 +355,8 @@ export default function Coach() {
     try {
       await api.delete(`/api/v1/advice/${id}`)
       setHistory(prev => prev.filter(item => item.id !== id))
+      if (dailyInsight?.id === id) setDailyInsight(null)
+      if (weeklyInsight?.id === id) setWeeklyInsight(null)
     } finally {
       setDeletingId(null)
       setDeleteInProgress(false)
