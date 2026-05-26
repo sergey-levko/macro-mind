@@ -149,7 +149,7 @@ class UserIntegrationTest extends AbstractIntegrationTest {
                 url("/api/v1/auth/login"), HttpMethod.POST,
                 new HttpEntity<>(loginBody, headers), Map.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(login.getBody()).containsKey("token");
+        assertThat(login.getBody()).containsKey("accessToken");
     }
 
     @Test
