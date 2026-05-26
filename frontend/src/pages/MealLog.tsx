@@ -118,8 +118,15 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [adding, setAdding] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
+  const [recentFoods, setRecentFoods] = useState<Food[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    api.get<Food[]>('/api/v1/foods/recent?limit=10')
+      .then(setRecentFoods)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!dropdownOpen) return
