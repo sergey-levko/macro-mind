@@ -159,31 +159,43 @@ function FoodRow({ food, onUpdated, onDeleted }: FoodRowProps) {
   )
 }
 
+interface FoodsPage {
+  content: Food[]
+  page: number
+  totalPages: number
+  totalElements: number
+}
+
 export default function Foods() {
   const [foods, setFoods] = useState<Food[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  async function loadFoods(search: string) {
+  async function loadFoods(search: string, pageNum: number) {
     setLoading(true)
     try {
-      const params = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ''
-      const data = await api.get<Food[]>(`/api/v1/foods${params}`)
-      setFoods(data)
+      const params = new URLSearchParams({ page: String(pageNum), size: '20' })
+      if (search.trim()) params.set('search', search.trim())
+      const data = await api.get<FoodsPage>(`/api/v1/foods?${params}`)
+      setFoods(data.content)
+      setPage(data.page)
+      setTotalPages(data.totalPages)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadFoods('')
+    loadFoods('', 0)
   }, [])
 
   function handleSearch(value: string) {
     setQuery(value)
     clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => loadFoods(value), 300)
+    debounceRef.current = setTimeout(() => loadFoods(value, 0), 300)
   }
 
   function handleUpdated(updated: Food) {
@@ -192,6 +204,18 @@ export default function Foods() {
 
   function handleDeleted(id: string) {
     setFoods(prev => prev.filter(f => f.id !== id))
+  }
+
+  function handlePrev() {
+    const next = page - 1
+    setPage(next)
+    loadFoods(query, next)
+  }
+
+  function handleNext() {
+    const next = page + 1
+    setPage(next)
+    loadFoods(query, next)
   }
 
   return (
@@ -227,6 +251,26 @@ export default function Foods() {
                 onDeleted={handleDeleted}
               />
             ))}
+          </div>
+        )}
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={handlePrev}
+              disabled={page === 0}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg transition-colors"
+            >
+              ← Previous
+            </button>
+            <span className="text-xs text-gray-500">Page {page + 1} of {totalPages}</span>
+            <button
+              onClick={handleNext}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg transition-colors"
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>
