@@ -252,7 +252,7 @@ function InsightPanel({
       {insight && !preview && (
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
           <p className="text-xs text-gray-500 mb-3">
-            {type === 'WEEKLY' ? `Week of ${insight.periodStart}` : insight.periodStart}
+            {type === 'WEEKLY' ? formatWeekLabel(insight.periodStart) : insight.periodStart}
           </p>
           <InsightContent content={insight.content} />
         </div>
