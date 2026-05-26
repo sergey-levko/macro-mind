@@ -1,8 +1,10 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.common.PageResponse;
 import com.epam.macromind.meal.MealItemRepository;
 import com.epam.macromind.user.UserNotFoundException;
 import com.epam.macromind.user.UserRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -39,11 +41,13 @@ class FoodService {
                 .orElseThrow(() -> new FoodNotFoundException(id));
     }
 
-    List<FoodResponse> searchFoods(UUID userId, String search) {
-        List<Food> foods = (search == null || search.isBlank())
-                ? foodRepository.findTop20ByUserId(userId)
-                : foodRepository.findTop20ByUserIdAndNameContainingIgnoreCase(userId, search);
-        return foods.stream().map(FoodResponse::from).toList();
+    PageResponse<FoodResponse> searchFoods(UUID userId, String search, int page, int size) {
+        int cappedSize = Math.min(size, 50);
+        var pageable = PageRequest.of(page, cappedSize);
+        var foods = (search == null || search.isBlank())
+                ? foodRepository.findByUserIdOrderByNameAsc(userId, pageable)
+                : foodRepository.findByUserIdAndNameContainingIgnoreCaseOrderByNameAsc(userId, search, pageable);
+        return PageResponse.of(foods.map(FoodResponse::from));
     }
 
     FoodResponse updateFood(UUID userId, UUID foodId, UpdateFoodRequest request) {

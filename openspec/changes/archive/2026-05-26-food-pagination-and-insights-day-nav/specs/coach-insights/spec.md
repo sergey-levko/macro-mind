@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Coach page displays proactive daily and weekly insights
 The Coach page SHALL display an insights panel with two sub-tabs: Daily and Weekly. The Daily sub-tab SHALL default to today's date and support day-by-day navigation. The Weekly sub-tab shows the current week's insight. Both fetch from `GET /api/v1/advice` using the appropriate `adviceType` and `periodStart` parameters.
 
@@ -14,6 +16,8 @@ The Coach page SHALL display an insights panel with two sub-tabs: Daily and Week
 #### Scenario: Insights fetch fails
 - **WHEN** the advice endpoint returns an error
 - **THEN** the insights panel shows a non-blocking error message and the chat panel remains fully functional
+
+## ADDED Requirements
 
 ### Requirement: Daily insights support day-by-day navigation
 The Daily insights sub-tab SHALL allow the user to navigate between days using Previous and Next buttons and a date picker, mirroring the Meal Log day-navigation pattern. Navigation SHALL be capped at today (no future dates).
@@ -40,9 +44,8 @@ The Daily insights sub-tab SHALL allow the user to navigate between days using P
 - **THEN** the system generates a preview using `periodStart` equal to the selected date
 - **THEN** the user can save or discard the preview as usual
 
-### Requirement: Coach tab is accessible from sidebar navigation
-The sidebar navigation SHALL include a Coach entry that routes to the Coach page.
+## REMOVED Requirements
 
-#### Scenario: User navigates to Coach tab
-- **WHEN** a user clicks "Coach" in the sidebar
-- **THEN** the Coach page is displayed with both the chat panel and insights panel visible
+### Requirement: History sub-tab
+**Reason**: Replaced by the day-navigation view on the Daily sub-tab, which provides the same browsing capability with a cleaner UX.
+**Migration**: Users browse past daily insights by navigating backwards using the Previous button or date picker on the Daily sub-tab.
