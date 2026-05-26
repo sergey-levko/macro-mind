@@ -101,7 +101,8 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void search_byName_returnsMatch() {
+    @SuppressWarnings("unchecked")
+    void search_byName_returnsPageEnvelope() {
         String token = register();
         CreateFoodRequest req = new CreateFoodRequest("Oat Porridge",
                 new BigDecimal("68"), new BigDecimal("2.4"),
@@ -109,12 +110,28 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
         restTemplate.exchange(url("/api/v1/foods"), HttpMethod.POST,
                 new HttpEntity<>(req, headersFor(token)), FoodResponse.class);
 
-        ResponseEntity<FoodResponse[]> results = restTemplate.exchange(
+        ResponseEntity<Map> results = restTemplate.exchange(
                 url("/api/v1/foods?search=oat"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(token)), FoodResponse[].class);
+                new HttpEntity<>(headersFor(token)), Map.class);
 
         assertThat(results.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(results.getBody()).anyMatch(f -> f.name().equals("Oat Porridge"));
+        assertThat(results.getBody()).containsKey("content");
+        assertThat(results.getBody()).containsKey("totalElements");
+        var content = (java.util.List<Map<String, Object>>) results.getBody().get("content");
+        assertThat(content).anyMatch(f -> "Oat Porridge".equals(f.get("name")));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void search_pageSizeCap_serverClampsTo50() {
+        String token = register();
+
+        ResponseEntity<Map> results = restTemplate.exchange(
+                url("/api/v1/foods?page=0&size=200"), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), Map.class);
+
+        assertThat(results.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(results.getBody()).containsKey("content");
     }
 
     @Test

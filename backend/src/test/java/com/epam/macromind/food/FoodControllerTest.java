@@ -3,6 +3,7 @@ package com.epam.macromind.food;
 import com.epam.macromind.auth.JwtService;
 import com.epam.macromind.auth.SecurityConfig;
 import com.epam.macromind.common.GlobalExceptionHandler;
+import com.epam.macromind.common.PageResponse;
 import com.epam.macromind.user.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -102,12 +103,28 @@ class FoodControllerTest {
     }
 
     @Test
-    void search_returns200WithList() throws Exception {
-        when(service.searchFoods(eq(USER_ID), eq("chicken"))).thenReturn(List.of(SAMPLE_RESPONSE));
+    void search_returns200WithPageEnvelope() throws Exception {
+        var pageResponse = new PageResponse<>(List.of(SAMPLE_RESPONSE), 0, 1, 1L);
+        when(service.searchFoods(eq(USER_ID), eq("chicken"), eq(0), eq(20))).thenReturn(pageResponse);
 
         mvc.perform(get("/api/v1/foods").param("search", "chicken"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Chicken Breast"));
+                .andExpect(jsonPath("$.content[0].name").value("Chicken Breast"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void search_defaultPageParams_passedToService() throws Exception {
+        var pageResponse = new PageResponse<FoodResponse>(List.of(), 0, 0, 0L);
+        when(service.searchFoods(eq(USER_ID), any(), eq(0), eq(20))).thenReturn(pageResponse);
+
+        mvc.perform(get("/api/v1/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+
+        verify(service).searchFoods(eq(USER_ID), eq(null), eq(0), eq(20));
     }
 
     @Test

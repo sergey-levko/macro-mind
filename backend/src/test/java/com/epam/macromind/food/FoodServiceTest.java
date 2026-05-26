@@ -1,5 +1,6 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.common.PageResponse;
 import com.epam.macromind.meal.MealItemRepository;
 import com.epam.macromind.user.UserNotFoundException;
 import com.epam.macromind.user.UserRepository;
@@ -8,6 +9,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,22 +86,38 @@ class FoodServiceTest {
 
     @Test
     void searchFoods_withTerm_returnsMatchingFoods() {
-        when(foodRepository.findTop20ByUserIdAndNameContainingIgnoreCase(USER_ID, "chicken"))
-                .thenReturn(List.of(sampleFood()));
+        var pageRequest = PageRequest.of(0, 20);
+        when(foodRepository.findByUserIdAndNameContainingIgnoreCaseOrderByNameAsc(eq(USER_ID), eq("chicken"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(sampleFood()), pageRequest, 1));
 
-        List<FoodResponse> results = service.searchFoods(USER_ID, "chicken");
+        PageResponse<FoodResponse> result = service.searchFoods(USER_ID, "chicken", 0, 20);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).name()).isEqualTo("Chicken Breast");
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).name()).isEqualTo("Chicken Breast");
+        assertThat(result.totalElements()).isEqualTo(1);
     }
 
     @Test
     void searchFoods_noTerm_returnsAllUserFoods() {
-        when(foodRepository.findTop20ByUserId(USER_ID)).thenReturn(List.of(sampleFood()));
+        var pageRequest = PageRequest.of(0, 20);
+        when(foodRepository.findByUserIdOrderByNameAsc(eq(USER_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(sampleFood()), pageRequest, 1));
 
-        List<FoodResponse> results = service.searchFoods(USER_ID, null);
+        PageResponse<FoodResponse> result = service.searchFoods(USER_ID, null, 0, 20);
 
-        assertThat(results).hasSize(1);
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void searchFoods_sizeExceedsCap_clampedTo50() {
+        var pageRequest = PageRequest.of(0, 50);
+        when(foodRepository.findByUserIdOrderByNameAsc(eq(USER_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), pageRequest, 0));
+
+        service.searchFoods(USER_ID, null, 0, 200);
+
+        verify(foodRepository).findByUserIdOrderByNameAsc(eq(USER_ID), eq(PageRequest.of(0, 50)));
     }
 
     @Test

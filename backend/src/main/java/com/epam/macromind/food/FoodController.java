@@ -1,5 +1,6 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.common.PageResponse;
 import com.epam.macromind.common.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,8 +33,11 @@ class FoodController {
     }
 
     @GetMapping
-    List<FoodResponse> search(@RequestParam(required = false) String search) {
-        return service.searchFoods(SecurityUtils.currentUserId(), search);
+    PageResponse<FoodResponse> search(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.searchFoods(SecurityUtils.currentUserId(), search, page, size);
     }
 
     @PutMapping("/{id}")
