@@ -65,9 +65,24 @@ class AiAdviceService {
                     false);
         }
 
+        if (request.content() != null) {
+            var advice = adviceRepository.save(new AiAdvice(userId, request.adviceType(), request.content(), request.periodStart()));
+            return new GenerateAdviceResult(toResponse(advice), true);
+        }
+
         var advice = adviceRepository.save(new AiAdvice(userId, request.adviceType(), request.periodStart()));
         asyncAdviceGenerator.complete(advice.getId(), systemPrompt, userPrompt);
         return new GenerateAdviceResult(toResponse(advice), true);
+    }
+
+    @Transactional
+    void deleteAdvice(UUID userId, UUID id) {
+        var advice = adviceRepository.findById(id)
+                .orElseThrow(() -> new AdviceNotFoundException(id));
+        if (!advice.getUserId().equals(userId)) {
+            throw new AdviceNotFoundException(id);
+        }
+        adviceRepository.deleteById(id);
     }
 
     @Transactional(readOnly = true)

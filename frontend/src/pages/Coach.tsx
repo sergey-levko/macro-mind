@@ -9,6 +9,7 @@ interface AdviceResponse {
   adviceType: 'DAILY' | 'WEEKLY'
   periodStart: string
   content: string
+  status: 'PENDING' | 'COMPLETED' | 'FAILED'
   createdAt: string
 }
 
@@ -270,6 +271,8 @@ export default function Coach() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DAILY' | 'WEEKLY'>('ALL')
   const [historyDate, setHistoryDate] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteInProgress, setDeleteInProgress] = useState(false)
 
   useEffect(() => {
     async function loadInsights() {
@@ -332,16 +335,31 @@ export default function Coach() {
     const setSaving = type === 'DAILY' ? setSavingDaily : setSavingWeekly
     const setPreview = type === 'DAILY' ? setPreviewDaily : setPreviewWeekly
     const setInsight = type === 'DAILY' ? setDailyInsight : setWeeklyInsight
+    const content = type === 'DAILY' ? previewDaily : previewWeekly
     setSaving(true)
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
         periodStart: type === 'DAILY' ? todayStr() : mondayStr(),
+        content,
       })
       setInsight(result)
       setPreview(null)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function confirmDelete(id: string) {
+    setDeleteInProgress(true)
+    try {
+      await api.delete(`/api/v1/advice/${id}`)
+      setHistory(prev => prev.filter(item => item.id !== id))
+      if (dailyInsight?.id === id) setDailyInsight(null)
+      if (weeklyInsight?.id === id) setWeeklyInsight(null)
+    } finally {
+      setDeletingId(null)
+      setDeleteInProgress(false)
     }
   }
 
@@ -530,13 +548,44 @@ export default function Coach() {
                         <div className="space-y-6">
                           {groupedHistory[day].map(item => (
                             <div key={item.id} className="border-b border-gray-800 pb-6 last:border-0 last:pb-0">
-                              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-3 ${
-                                item.adviceType === 'DAILY'
-                                  ? 'bg-teal-900/50 text-teal-400'
-                                  : 'bg-purple-900/50 text-purple-400'
-                              }`}>
-                                {item.adviceType === 'DAILY' ? 'Daily' : 'Weekly'}
-                              </span>
+                              <div className="flex items-center justify-between mb-3">
+                                <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  item.adviceType === 'DAILY'
+                                    ? 'bg-teal-900/50 text-teal-400'
+                                    : 'bg-purple-900/50 text-purple-400'
+                                }`}>
+                                  {item.adviceType === 'DAILY' ? 'Daily' : 'Weekly'}
+                                </span>
+                                {deletingId === item.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-400">Delete?</span>
+                                    <button
+                                      onClick={() => confirmDelete(item.id)}
+                                      disabled={deleteInProgress}
+                                      className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded transition-colors"
+                                    >
+                                      {deleteInProgress ? '…' : 'Confirm'}
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingId(null)}
+                                      disabled={deleteInProgress}
+                                      className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setDeletingId(item.id)}
+                                    className="text-gray-600 hover:text-red-400 transition-colors p-1"
+                                    title="Delete insight"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
                               <InsightContent content={item.content} />
                             </div>
                           ))}

@@ -40,7 +40,7 @@ class AiAdviceServiceTest {
 
     private final UUID userId = UUID.randomUUID();
     private final LocalDate today = LocalDate.of(2026, 5, 20);
-    private final GenerateAdviceRequest dailyRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, false);
+    private final GenerateAdviceRequest dailyRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, false, null);
 
     @BeforeEach
     void setUp() {
@@ -87,7 +87,7 @@ class AiAdviceServiceTest {
 
     @Test
     void generateAdvice_duplicatePreview_callsAIWithoutSaving() {
-        var previewRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, true);
+        var previewRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, true, null);
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser()));
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(sampleGoal()));
         when(promptBuilder.buildSystemPrompt(any(), any())).thenReturn("sys");
@@ -107,6 +107,25 @@ class AiAdviceServiceTest {
         verify(adviceRepository, never()).save(any());
         verify(adviceRepository, never()).findByUserIdAndAdviceTypeAndPeriodStart(any(), any(), any());
         verifyNoInteractions(asyncAdviceGenerator);
+    }
+
+    @Test
+    void generateAdvice_withContent_savesDirectlyAsCompleted() {
+        var contentRequest = new GenerateAdviceRequest(AdviceType.DAILY, today, false, "Saved preview content.");
+        var user = sampleUser();
+        var goal = sampleGoal();
+        var saved = sampleCompletedAdvice();
+        when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
+                .thenReturn(List.of());
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(goal));
+        when(adviceRepository.save(any())).thenReturn(saved);
+
+        GenerateAdviceResult result = service.generateAdvice(userId, contentRequest);
+
+        assertThat(result.created()).isTrue();
+        verify(adviceRepository).save(any());
+        verifyNoInteractions(asyncAdviceGenerator, chatClient);
     }
 
     @Test
@@ -149,6 +168,37 @@ class AiAdviceServiceTest {
 
         assertThatThrownBy(() -> service.getAdvice(id))
                 .isInstanceOf(AdviceNotFoundException.class);
+    }
+
+    @Test
+    void deleteAdvice_success() {
+        var advice = sampleCompletedAdvice();
+        when(adviceRepository.findById(advice.getId())).thenReturn(Optional.of(advice));
+
+        service.deleteAdvice(userId, advice.getId());
+
+        verify(adviceRepository).deleteById(advice.getId());
+    }
+
+    @Test
+    void deleteAdvice_notFound_throws404() {
+        UUID id = UUID.randomUUID();
+        when(adviceRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteAdvice(userId, id))
+                .isInstanceOf(AdviceNotFoundException.class);
+        verify(adviceRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteAdvice_wrongOwner_throws404() {
+        var advice = sampleCompletedAdvice();
+        UUID otherId = UUID.randomUUID();
+        when(adviceRepository.findById(advice.getId())).thenReturn(Optional.of(advice));
+
+        assertThatThrownBy(() -> service.deleteAdvice(otherId, advice.getId()))
+                .isInstanceOf(AdviceNotFoundException.class);
+        verify(adviceRepository, never()).deleteById(any());
     }
 
     @Test

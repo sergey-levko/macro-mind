@@ -153,6 +153,30 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void deleteAdvice_afterGenerate_returns204ThenGet404() {
+        String token = register();
+        setGoal(token);
+
+        String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-22\"}";
+
+        ResponseEntity<AiAdviceResponse> generated = restTemplate.exchange(
+                url("/api/v1/advice"), HttpMethod.POST,
+                new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
+        assertThat(generated.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        UUID adviceId = generated.getBody().id();
+
+        ResponseEntity<Void> deleted = restTemplate.exchange(
+                url("/api/v1/advice/" + adviceId), HttpMethod.DELETE,
+                new HttpEntity<>(headersFor(token)), Void.class);
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<AiAdviceResponse> fetched = restTemplate.exchange(
+                url("/api/v1/advice/" + adviceId), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), AiAdviceResponse.class);
+        assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void generateAdvice_noGoal_returns400() {
         String token = register();
         String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";

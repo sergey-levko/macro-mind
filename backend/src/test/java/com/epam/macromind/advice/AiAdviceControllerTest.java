@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -96,6 +97,21 @@ class AiAdviceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_BODY))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteAdvice_success_returns204() throws Exception {
+        mvc.perform(delete("/api/v1/advice/{id}", ADVICE_ID))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteAdvice_notFound_returns404() throws Exception {
+        doThrow(new AdviceNotFoundException(ADVICE_ID))
+                .when(adviceService).deleteAdvice(USER_ID, ADVICE_ID);
+
+        mvc.perform(delete("/api/v1/advice/{id}", ADVICE_ID))
+                .andExpect(status().isNotFound());
     }
 
     @Test

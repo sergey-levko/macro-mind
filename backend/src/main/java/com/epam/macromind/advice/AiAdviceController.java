@@ -27,6 +27,12 @@ class AiAdviceController {
                 : ResponseEntity.ok(result.response());
     }
 
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> deleteAdvice(@PathVariable java.util.UUID id) {
+        adviceService.deleteAdvice(SecurityUtils.currentUserId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     AiAdviceResponse getAdvice(@PathVariable java.util.UUID id) {
         return adviceService.getAdvice(id);
