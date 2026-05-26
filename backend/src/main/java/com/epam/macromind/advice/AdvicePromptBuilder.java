@@ -65,7 +65,7 @@ class AdvicePromptBuilder {
 
         var start = periodStart.atStartOfDay(ZoneOffset.UTC).toInstant();
         var end = periodEnd.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        List<MealLog> logs = mealLogRepository.findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, start, end);
+        List<MealLog> logs = mealLogRepository.findWithItemsByUserIdAndLoggedAtBetween(userId, start, end);
 
         Map<LocalDate, DailyTotals> dailyMap = new HashMap<>();
         for (MealLog log : logs) {
