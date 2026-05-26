@@ -1,8 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from 'react-error-boundary'
 import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ToastProvider } from './components/Toast'
+import RouteErrorFallback from './components/RouteErrorFallback'
+import RootErrorFallback from './components/RootErrorFallback'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import MealLog from './pages/MealLog'
@@ -11,40 +14,53 @@ import Foods from './pages/Foods'
 import Coach from './pages/Coach'
 import Onboarding from './pages/Onboarding'
 
+function RouteBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  return (
+    <ErrorBoundary FallbackComponent={RouteErrorFallback} resetKeys={[location.pathname]}>
+      {children}
+    </ErrorBoundary>
+  )
+}
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="meal-log" element={<MealLog />} />
-              <Route path="foods" element={<Foods />} />
-              <Route path="coach" element={<Coach />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary FallbackComponent={RootErrorFallback}>
+      <BrowserRouter>
+        <AuthProvider>
+          <ToastProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <RouteBoundary>
+                      <Onboarding />
+                    </RouteBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<RouteBoundary><Dashboard /></RouteBoundary>} />
+                <Route path="meal-log" element={<RouteBoundary><MealLog /></RouteBoundary>} />
+                <Route path="foods" element={<RouteBoundary><Foods /></RouteBoundary>} />
+                <Route path="coach" element={<RouteBoundary><Coach /></RouteBoundary>} />
+                <Route path="profile" element={<RouteBoundary><Profile /></RouteBoundary>} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
