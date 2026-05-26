@@ -1,0 +1,32 @@
+## MODIFIED Requirements
+
+### Requirement: Generate nutrition advice
+The system SHALL generate personalized nutrition advice by analyzing the user's meal logs for a given period against their nutritional goal and calling the Claude AI API. For non-preview requests, the system SHALL be idempotent: if advice for the same `(adviceType, periodStart)` already exists for the user, the existing record MUST be returned without calling the AI API again.
+
+#### Scenario: Successful advice generation (new record)
+- **WHEN** `POST /api/v1/advice` is called with a valid JWT, a valid `adviceType` (DAILY/WEEKLY), a valid `periodStart` (ISO-8601 date), and no advice record exists yet for that `(adviceType, periodStart)` pair
+- **THEN** the system aggregates the user's meal logs for the period, calls the Claude AI API with the user's profile and nutritional goal as context, persists the advice, and returns HTTP 201 with `id`, `userId`, `adviceType`, `periodStart`, `content`, and `createdAt`
+
+#### Scenario: Duplicate non-preview request returns existing record
+- **WHEN** `POST /api/v1/advice` is called with a valid JWT, a valid `adviceType`, a valid `periodStart`, `preview` is absent or `false`, and an advice record already exists for that `(userId, adviceType, periodStart)` triple
+- **THEN** the system returns HTTP 200 with the existing advice record without calling the AI API
+
+#### Scenario: Preview request always calls the AI
+- **WHEN** `POST /api/v1/advice` is called with `preview: true` and an advice record already exists for the same `(userId, adviceType, periodStart)` triple
+- **THEN** the system calls the Claude AI API and returns the freshly generated content without persisting it or modifying the existing record
+
+#### Scenario: Generation fails when user does not exist
+- **WHEN** `POST /api/v1/advice` is called with a JWT whose user does not match any user record
+- **THEN** the system returns HTTP 404 Not Found
+
+#### Scenario: Generation fails when user has no nutritional goal
+- **WHEN** `POST /api/v1/advice` is called and the user has no nutritional goal set
+- **THEN** the system returns HTTP 400 Bad Request
+
+#### Scenario: Generation fails when adviceType is missing or invalid
+- **WHEN** `POST /api/v1/advice` is called without `adviceType` or with an unrecognized value
+- **THEN** the system returns HTTP 400 Bad Request
+
+#### Scenario: Generation fails when periodStart is missing or invalid
+- **WHEN** `POST /api/v1/advice` is called without `periodStart` or with a non-date string
+- **THEN** the system returns HTTP 400 Bad Request

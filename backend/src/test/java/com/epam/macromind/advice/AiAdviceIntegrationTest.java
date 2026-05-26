@@ -7,14 +7,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,6 +29,15 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AiAdviceIntegrationTest extends AbstractIntegrationTest {
+
+    @TestConfiguration
+    static class SyncAsyncConfig {
+        @Bean
+        @Primary
+        TaskExecutor taskExecutor() {
+            return new SyncTaskExecutor();
+        }
+    }
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -99,8 +112,7 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<AiAdviceResponse> generated = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.POST,
                 new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
-        assertThat(generated.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(generated.getBody().content()).isEqualTo("You are on track! Keep it up.");
+        assertThat(generated.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
 
         UUID adviceId = generated.getBody().id();
 
@@ -109,6 +121,8 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(headersFor(token)), AiAdviceResponse.class);
         assertThat(retrieved.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(retrieved.getBody().id()).isEqualTo(adviceId);
+        assertThat(retrieved.getBody().content()).isEqualTo("You are on track! Keep it up.");
+        assertThat(retrieved.getBody().status()).isEqualTo(AdviceStatus.COMPLETED);
 
         ResponseEntity<AiAdviceResponse[]> listed = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.GET,
@@ -128,7 +142,7 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<AiAdviceResponse> first = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.POST,
                 new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
-        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         UUID firstId = first.getBody().id();
 
         ResponseEntity<AiAdviceResponse> second = restTemplate.exchange(

@@ -13,4 +13,4 @@
 ## 4. Idempotency Guard
 
 - [x] 4.1 At the start of `generateAdvice()`, when `preview == false`, call `adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(...)` and return the existing `AiAdviceResponse` (HTTP 200) immediately if a record is found; add the corresponding unit test covering the short-circuit path and the preview bypass path
-- [ ] 4.2 Update `AiAdviceController` to return `ResponseEntity<AiAdviceResponse>` so it can return 201 for new records and 200 for existing ones; update the existing integration tests in `AiAdviceIntegrationTest` to assert 201 on first call and 200 on the duplicate call with the same record `id`
+- [x] 4.2 Update `AiAdviceController` to return `ResponseEntity<AiAdviceResponse>` so it can return 201 for new records and 200 for existing ones; update the existing integration tests in `AiAdviceIntegrationTest` to assert 201 on first call and 200 on the duplicate call with the same record `id`

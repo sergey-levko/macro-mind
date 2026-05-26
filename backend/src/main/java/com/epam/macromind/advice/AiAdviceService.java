@@ -20,17 +20,20 @@ class AiAdviceService {
     private final NutritionalGoalRepository goalRepository;
     private final AiAdviceRepository adviceRepository;
     private final AdvicePromptBuilder promptBuilder;
+    private final AsyncAdviceGenerator asyncAdviceGenerator;
 
     AiAdviceService(@Qualifier("aiAdviceChatClient") ChatClient chatClient,
                     UserRepository userRepository,
                     NutritionalGoalRepository goalRepository,
                     AiAdviceRepository adviceRepository,
-                    AdvicePromptBuilder promptBuilder) {
+                    AdvicePromptBuilder promptBuilder,
+                    AsyncAdviceGenerator asyncAdviceGenerator) {
         this.chatClient = chatClient;
         this.userRepository = userRepository;
         this.goalRepository = goalRepository;
         this.adviceRepository = adviceRepository;
         this.promptBuilder = promptBuilder;
+        this.asyncAdviceGenerator = asyncAdviceGenerator;
     }
 
     GenerateAdviceResult generateAdvice(UUID userId, GenerateAdviceRequest request) {
@@ -50,20 +53,20 @@ class AiAdviceService {
         String systemPrompt = promptBuilder.buildSystemPrompt(user, goal);
         String userPrompt = promptBuilder.buildUserPrompt(userId, request.adviceType(), request.periodStart());
 
-        String content = chatClient.prompt()
-                .system(systemPrompt)
-                .user(userPrompt)
-                .call()
-                .content();
-
         if (request.preview()) {
+            String content = chatClient.prompt()
+                    .system(systemPrompt)
+                    .user(userPrompt)
+                    .call()
+                    .content();
             return new GenerateAdviceResult(
-                    new AiAdviceResponse(null, userId, request.adviceType(), request.periodStart(), content, null),
+                    new AiAdviceResponse(null, userId, request.adviceType(), request.periodStart(),
+                            content, AdviceStatus.COMPLETED, null),
                     false);
         }
 
-        var advice = adviceRepository.save(
-                new AiAdvice(userId, request.adviceType(), content, request.periodStart()));
+        var advice = adviceRepository.save(new AiAdvice(userId, request.adviceType(), request.periodStart()));
+        asyncAdviceGenerator.complete(advice.getId(), systemPrompt, userPrompt);
         return new GenerateAdviceResult(toResponse(advice), true);
     }
 
@@ -96,6 +99,7 @@ class AiAdviceService {
                 advice.getAdviceType(),
                 advice.getPeriodStart(),
                 advice.getContent(),
+                advice.getStatus(),
                 advice.getCreatedAt()
         );
     }

@@ -34,6 +34,7 @@ class AiAdviceServiceTest {
     @Mock ChatClient chatClient;
     @Mock ChatClient.ChatClientRequestSpec requestSpec;
     @Mock ChatClient.CallResponseSpec callResponseSpec;
+    @Mock AsyncAdviceGenerator asyncAdviceGenerator;
 
     AiAdviceService service;
 
@@ -43,7 +44,7 @@ class AiAdviceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AiAdviceService(chatClient, userRepository, goalRepository, adviceRepository, promptBuilder);
+        service = new AiAdviceService(chatClient, userRepository, goalRepository, adviceRepository, promptBuilder, asyncAdviceGenerator);
     }
 
     @Test
@@ -57,24 +58,22 @@ class AiAdviceServiceTest {
         when(goalRepository.findByUserId(userId)).thenReturn(Optional.of(goal));
         when(promptBuilder.buildSystemPrompt(user, goal)).thenReturn("sys");
         when(promptBuilder.buildUserPrompt(userId, AdviceType.DAILY, today)).thenReturn("usr");
-        when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.system("sys")).thenReturn(requestSpec);
-        when(requestSpec.user("usr")).thenReturn(requestSpec);
-        when(requestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn("Eat more protein.");
         when(adviceRepository.save(any())).thenReturn(saved);
 
         GenerateAdviceResult result = service.generateAdvice(userId, dailyRequest);
 
         assertThat(result.response().userId()).isEqualTo(userId);
         assertThat(result.response().adviceType()).isEqualTo(AdviceType.DAILY);
+        assertThat(result.response().status()).isEqualTo(AdviceStatus.PENDING);
         assertThat(result.created()).isTrue();
         verify(adviceRepository).save(any());
+        verify(asyncAdviceGenerator).complete(any(), eq("sys"), eq("usr"));
+        verifyNoInteractions(chatClient);
     }
 
     @Test
     void generateAdvice_duplicateNonPreview_returnsExistingWithoutCallingAI() {
-        var existing = sampleAdvice();
+        var existing = sampleCompletedAdvice();
         when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
                 .thenReturn(List.of(existing));
 
@@ -82,7 +81,7 @@ class AiAdviceServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.response().id()).isEqualTo(existing.getId());
-        verifyNoInteractions(chatClient, userRepository, goalRepository);
+        verifyNoInteractions(chatClient, userRepository, goalRepository, asyncAdviceGenerator);
         verify(adviceRepository, never()).save(any());
     }
 
@@ -103,9 +102,11 @@ class AiAdviceServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.response().content()).isEqualTo("Fresh preview.");
+        assertThat(result.response().status()).isEqualTo(AdviceStatus.COMPLETED);
         assertThat(result.response().id()).isNull();
         verify(adviceRepository, never()).save(any());
         verify(adviceRepository, never()).findByUserIdAndAdviceTypeAndPeriodStart(any(), any(), any());
+        verifyNoInteractions(asyncAdviceGenerator);
     }
 
     @Test
@@ -133,7 +134,7 @@ class AiAdviceServiceTest {
 
     @Test
     void getAdvice_success() {
-        var advice = sampleAdvice();
+        var advice = sampleCompletedAdvice();
         when(adviceRepository.findById(advice.getId())).thenReturn(Optional.of(advice));
 
         AiAdviceResponse result = service.getAdvice(advice.getId());
@@ -152,7 +153,7 @@ class AiAdviceServiceTest {
 
     @Test
     void listAdvice_noFilters_returnsAll() {
-        when(adviceRepository.findByUserId(userId)).thenReturn(List.of(sampleAdvice()));
+        when(adviceRepository.findByUserId(userId)).thenReturn(List.of(sampleCompletedAdvice()));
 
         List<AiAdviceResponse> results = service.listAdvice(userId, null, null);
 
@@ -163,7 +164,7 @@ class AiAdviceServiceTest {
     @Test
     void listAdvice_withAdviceTypeFilter() {
         when(adviceRepository.findByUserIdAndAdviceType(userId, AdviceType.DAILY))
-                .thenReturn(List.of(sampleAdvice()));
+                .thenReturn(List.of(sampleCompletedAdvice()));
 
         List<AiAdviceResponse> results = service.listAdvice(userId, AdviceType.DAILY, null);
 
@@ -174,7 +175,7 @@ class AiAdviceServiceTest {
     @Test
     void listAdvice_withAllFilters() {
         when(adviceRepository.findByUserIdAndAdviceTypeAndPeriodStart(userId, AdviceType.DAILY, today))
-                .thenReturn(List.of(sampleAdvice()));
+                .thenReturn(List.of(sampleCompletedAdvice()));
 
         List<AiAdviceResponse> results = service.listAdvice(userId, AdviceType.DAILY, today);
 
@@ -193,6 +194,12 @@ class AiAdviceServiceTest {
     }
 
     private AiAdvice sampleAdvice() {
+        AiAdvice a = new AiAdvice(userId, AdviceType.DAILY, today);
+        setId(a, UUID.randomUUID());
+        return a;
+    }
+
+    private AiAdvice sampleCompletedAdvice() {
         AiAdvice a = new AiAdvice(userId, AdviceType.DAILY, "Eat more protein.", today);
         setId(a, UUID.randomUUID());
         return a;

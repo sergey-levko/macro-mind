@@ -23,7 +23,7 @@ class AiAdviceController {
     ResponseEntity<AiAdviceResponse> generateAdvice(@Valid @RequestBody GenerateAdviceRequest request) {
         GenerateAdviceResult result = adviceService.generateAdvice(SecurityUtils.currentUserId(), request);
         return result.created()
-                ? ResponseEntity.status(HttpStatus.CREATED).body(result.response())
+                ? ResponseEntity.status(HttpStatus.ACCEPTED).body(result.response())
                 : ResponseEntity.ok(result.response());
     }
 

@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0009-ai-advice-status
+      author: macromind
+      comment: "Add status column to ai_advice for async generation tracking"
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE ai_advice
+                ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED';
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE ai_advice DROP COLUMN status;
