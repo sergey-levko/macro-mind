@@ -83,7 +83,7 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return restTemplate.postForEntity(url("/api/v1/auth/register"),
-                new HttpEntity<>(body, headers), AuthResponse.class).getBody().token();
+                new HttpEntity<>(body, headers), AuthResponse.class).getBody().accessToken();
     }
 
     private void setGoal(String token) {
