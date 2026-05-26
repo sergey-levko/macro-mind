@@ -98,7 +98,7 @@ class AiAdviceService {
         if (adviceType != null && periodStart != null) {
             results = adviceRepository.findByUserIdAndAdviceTypeAndPeriodStartOrderByCreatedAtDesc(userId, adviceType, periodStart);
         } else if (adviceType != null) {
-            results = adviceRepository.findByUserIdAndAdviceType(userId, adviceType);
+            results = adviceRepository.findByUserIdAndAdviceTypeOrderByCreatedAtDesc(userId, adviceType);
         } else if (periodStart != null) {
             results = adviceRepository.findByUserIdAndPeriodStart(userId, periodStart);
         } else {

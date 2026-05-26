@@ -213,13 +213,13 @@ class AiAdviceServiceTest {
 
     @Test
     void listAdvice_withAdviceTypeFilter() {
-        when(adviceRepository.findByUserIdAndAdviceType(userId, AdviceType.DAILY))
+        when(adviceRepository.findByUserIdAndAdviceTypeOrderByCreatedAtDesc(userId, AdviceType.DAILY))
                 .thenReturn(List.of(sampleCompletedAdvice()));
 
         List<AiAdviceResponse> results = service.listAdvice(userId, AdviceType.DAILY, null);
 
         assertThat(results).hasSize(1);
-        verify(adviceRepository).findByUserIdAndAdviceType(userId, AdviceType.DAILY);
+        verify(adviceRepository).findByUserIdAndAdviceTypeOrderByCreatedAtDesc(userId, AdviceType.DAILY);
     }
 
     @Test

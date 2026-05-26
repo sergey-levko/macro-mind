@@ -346,8 +346,7 @@ export default function Coach() {
         } else if (selectedDate === todayStr()) {
           const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY')
           if (all.length > 0) {
-            const sorted = [...all].sort((a, b) => b.periodStart.localeCompare(a.periodStart))
-            setSelectedDate(sorted[0].periodStart)
+            setSelectedDate(all[0].periodStart)
           } else {
             setDailyInsight(null)
             setDailyLoading(false)
@@ -381,8 +380,7 @@ export default function Coach() {
         } else if (selectedWeek === mondayStr()) {
           const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY')
           if (all.length > 0) {
-            const sorted = [...all].sort((a, b) => b.periodStart.localeCompare(a.periodStart))
-            setSelectedWeek(sorted[0].periodStart)
+            setSelectedWeek(all[0].periodStart)
           } else {
             setWeeklyInsight(null)
             setWeeklyLoading(false)
