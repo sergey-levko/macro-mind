@@ -140,7 +140,7 @@ class AiAdviceServiceTest {
     }
 
     private User sampleUser() {
-        return new User("Alice", "alice@example.com", 30,
+        return new User("Alice", "alice@example.com", "", 30,
                 new BigDecimal("65"), new BigDecimal("170"), null);
     }
 

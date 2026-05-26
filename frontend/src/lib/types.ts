@@ -110,3 +110,8 @@ export interface UsdaFoodResult {
   fdcId: number
   description: string
 }
+
+export interface AuthResponse {
+  token: string
+  user: UserResponse
+}

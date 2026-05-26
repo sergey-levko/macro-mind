@@ -1,8 +1,7 @@
 package com.epam.macromind.advice;
 
-import com.epam.macromind.user.CreateUserRequest;
-import com.epam.macromind.user.GoalType;
-import com.epam.macromind.user.UserResponse;
+import com.epam.macromind.AbstractIntegrationTest;
+import com.epam.macromind.auth.AuthResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -10,14 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -29,12 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class AiAdviceIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+class AiAdviceIntegrationTest extends AbstractIntegrationTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -65,53 +55,64 @@ class AiAdviceIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    private UUID createUser() {
-        CreateUserRequest req = new CreateUserRequest(
-                "Advice User", "advice-" + UUID.randomUUID() + "@example.com",
-                28, new BigDecimal("70.0"), new BigDecimal("175.0"), GoalType.MAINTAIN_WEIGHT);
-        return restTemplate.postForEntity(url("/api/v1/users"), req, UserResponse.class)
-                .getBody().id();
+    private String register() {
+        String body = """
+                {
+                  "name": "Advice User",
+                  "email": "advice-%s@example.com",
+                  "password": "password123",
+                  "age": 28,
+                  "weightKg": 70.0,
+                  "heightCm": 175.0,
+                  "goalType": "MAINTAIN_WEIGHT"
+                }
+                """.formatted(UUID.randomUUID());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return restTemplate.postForEntity(url("/api/v1/auth/register"),
+                new HttpEntity<>(body, headers), AuthResponse.class).getBody().token();
     }
 
-    private void setGoal(UUID userId) {
+    private void setGoal(String token) {
         String body = "{\"caloriesTarget\":2000,\"proteinG\":150,\"carbsG\":200,\"fatG\":70}";
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-User-Id", userId.toString());
+        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
         restTemplate.exchange(url("/api/v1/nutritional-goals"), HttpMethod.PUT,
                 new HttpEntity<>(body, headers), Map.class);
     }
 
-    private HttpHeaders headersFor(UUID userId) {
+    private HttpHeaders headersFor(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-User-Id", userId.toString());
+        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
 
     @Test
     void generateRetrieveList_roundTrip() {
-        UUID userId = createUser();
-        setGoal(userId);
+        String token = register();
+        setGoal(token);
 
         String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";
 
         ResponseEntity<AiAdviceResponse> generated = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.POST,
-                new HttpEntity<>(body, headersFor(userId)), AiAdviceResponse.class);
+                new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
         assertThat(generated.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(generated.getBody().content()).isEqualTo("You are on track! Keep it up.");
 
         UUID adviceId = generated.getBody().id();
 
-        ResponseEntity<AiAdviceResponse> retrieved = restTemplate.getForEntity(
-                url("/api/v1/advice/" + adviceId), AiAdviceResponse.class);
+        ResponseEntity<AiAdviceResponse> retrieved = restTemplate.exchange(
+                url("/api/v1/advice/" + adviceId), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), AiAdviceResponse.class);
         assertThat(retrieved.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(retrieved.getBody().id()).isEqualTo(adviceId);
 
         ResponseEntity<AiAdviceResponse[]> listed = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(userId)), AiAdviceResponse[].class);
+                new HttpEntity<>(headersFor(token)), AiAdviceResponse[].class);
         assertThat(listed.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(listed.getBody()).hasSize(1);
         assertThat(listed.getBody()[0].id()).isEqualTo(adviceId);
@@ -119,12 +120,12 @@ class AiAdviceIntegrationTest {
 
     @Test
     void generateAdvice_noGoal_returns400() {
-        UUID userId = createUser();
+        String token = register();
         String body = "{\"adviceType\":\"DAILY\",\"periodStart\":\"2026-05-20\"}";
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.POST,
-                new HttpEntity<>(body, headersFor(userId)), Map.class);
+                new HttpEntity<>(body, headersFor(token)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }

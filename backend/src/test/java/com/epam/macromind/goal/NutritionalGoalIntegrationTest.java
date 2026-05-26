@@ -1,8 +1,7 @@
 package com.epam.macromind.goal;
 
-import com.epam.macromind.user.CreateUserRequest;
-import com.epam.macromind.user.GoalType;
-import com.epam.macromind.user.UserResponse;
+import com.epam.macromind.AbstractIntegrationTest;
+import com.epam.macromind.auth.AuthResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -10,14 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -29,12 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class NutritionalGoalIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+class NutritionalGoalIntegrationTest extends AbstractIntegrationTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -67,17 +57,27 @@ class NutritionalGoalIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    private UUID createUser() {
-        CreateUserRequest req = new CreateUserRequest(
-                "Goal User", "goal-" + UUID.randomUUID() + "@example.com",
-                30, new BigDecimal("75.0"), new BigDecimal("180.0"), GoalType.LOSE_WEIGHT);
-        return restTemplate.postForEntity(url("/api/v1/users"), req, UserResponse.class)
-                .getBody().id();
+    private String register() {
+        String body = """
+                {
+                  "name": "Goal User",
+                  "email": "goal-%s@example.com",
+                  "password": "password123",
+                  "age": 30,
+                  "weightKg": 75.0,
+                  "heightCm": 180.0,
+                  "goalType": "LOSE_WEIGHT"
+                }
+                """.formatted(UUID.randomUUID());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return restTemplate.postForEntity(url("/api/v1/auth/register"),
+                new HttpEntity<>(body, headers), AuthResponse.class).getBody().token();
     }
 
-    private HttpHeaders headersFor(UUID userId) {
+    private HttpHeaders headersFor(String token) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-User-Id", userId.toString());
+        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
@@ -87,83 +87,72 @@ class NutritionalGoalIntegrationTest {
 
     @Test
     void fullRoundTrip_setGetReplaceDelete() {
-        UUID userId = createUser();
+        String token = register();
 
         ResponseEntity<NutritionalGoalResponse> set = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.PUT,
-                new HttpEntity<>(GOAL_BODY, headersFor(userId)), NutritionalGoalResponse.class);
+                new HttpEntity<>(GOAL_BODY, headersFor(token)), NutritionalGoalResponse.class);
         assertThat(set.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(set.getBody().caloriesTarget()).isEqualByComparingTo("2000");
 
         ResponseEntity<NutritionalGoalResponse> get = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(userId)), NutritionalGoalResponse.class);
+                new HttpEntity<>(headersFor(token)), NutritionalGoalResponse.class);
         assertThat(get.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(get.getBody().id()).isEqualTo(set.getBody().id());
 
         String updatedBody = "{\"caloriesTarget\":2500,\"proteinG\":180,\"carbsG\":220,\"fatG\":80}";
         ResponseEntity<NutritionalGoalResponse> replaced = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.PUT,
-                new HttpEntity<>(updatedBody, headersFor(userId)), NutritionalGoalResponse.class);
+                new HttpEntity<>(updatedBody, headersFor(token)), NutritionalGoalResponse.class);
         assertThat(replaced.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(replaced.getBody().caloriesTarget()).isEqualByComparingTo("2500");
 
         ResponseEntity<Void> deleted = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.DELETE,
-                new HttpEntity<>(headersFor(userId)), Void.class);
+                new HttpEntity<>(headersFor(token)), Void.class);
         assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
         ResponseEntity<Map> afterDelete = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(userId)), Map.class);
+                new HttpEntity<>(headersFor(token)), Map.class);
         assertThat(afterDelete.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void getGoal_noGoalSet_returns404() {
-        UUID userId = createUser();
+        String token = register();
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.GET,
-                new HttpEntity<>(headersFor(userId)), Map.class);
+                new HttpEntity<>(headersFor(token)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void deleteGoal_noGoalSet_returns404() {
-        UUID userId = createUser();
+        String token = register();
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/nutritional-goals"), HttpMethod.DELETE,
-                new HttpEntity<>(headersFor(userId)), Map.class);
+                new HttpEntity<>(headersFor(token)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void generateGoal_validUser_returns200WithNumericFields() {
-        UUID userId = createUser();
+        String token = register();
 
         ResponseEntity<GoalSuggestionResponse> response = restTemplate.exchange(
                 url("/api/v1/nutritional-goals/generate"), HttpMethod.POST,
-                new HttpEntity<>(headersFor(userId)), GoalSuggestionResponse.class);
+                new HttpEntity<>(headersFor(token)), GoalSuggestionResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().caloriesTarget()).isEqualByComparingTo("2000");
         assertThat(response.getBody().proteinG()).isEqualByComparingTo("150");
         assertThat(response.getBody().carbsG()).isEqualByComparingTo("200");
         assertThat(response.getBody().fatG()).isEqualByComparingTo("70");
-    }
-
-    @Test
-    void generateGoal_unknownUser_returns404() {
-        UUID unknownId = UUID.randomUUID();
-
-        ResponseEntity<Map> response = restTemplate.exchange(
-                url("/api/v1/nutritional-goals/generate"), HttpMethod.POST,
-                new HttpEntity<>(headersFor(unknownId)), Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

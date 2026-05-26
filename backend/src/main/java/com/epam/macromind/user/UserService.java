@@ -16,8 +16,8 @@ class UserService {
 
     UserResponse createUser(CreateUserRequest request) {
         try {
-            User user = new User(request.name(), request.email(), request.age(),
-                    request.weightKg(), request.heightCm(), request.goalType());
+            User user = new User(request.name(), request.email(), "",
+                    request.age(), request.weightKg(), request.heightCm(), request.goalType());
             return UserResponse.from(repository.save(user));
         } catch (DataIntegrityViolationException e) {
             throw new EmailAlreadyExistsException(request.email());

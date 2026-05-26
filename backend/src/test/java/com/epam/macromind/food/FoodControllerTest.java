@@ -1,5 +1,7 @@
 package com.epam.macromind.food;
 
+import com.epam.macromind.auth.JwtService;
+import com.epam.macromind.auth.SecurityConfig;
 import com.epam.macromind.common.GlobalExceptionHandler;
 import com.epam.macromind.user.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,14 +25,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(FoodController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@WithMockUser(username = "00000000-0000-0000-0000-000000000001")
 class FoodControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @MockitoBean FoodService service;
+    @MockitoBean JwtService jwtService;
 
-    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID FOOD_ID = UUID.randomUUID();
 
     private static final FoodResponse SAMPLE_RESPONSE = new FoodResponse(
@@ -46,7 +51,6 @@ class FoodControllerTest {
         when(service.createFood(eq(USER_ID), any())).thenReturn(SAMPLE_RESPONSE);
 
         mvc.perform(post("/api/v1/foods")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(VALID_REQUEST)))
                 .andExpect(status().isCreated())
@@ -57,7 +61,6 @@ class FoodControllerTest {
     @Test
     void create_missingFields_returns400() throws Exception {
         mvc.perform(post("/api/v1/foods")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -68,7 +71,6 @@ class FoodControllerTest {
         when(service.createFood(eq(USER_ID), any())).thenThrow(new UserNotFoundException(USER_ID));
 
         mvc.perform(post("/api/v1/foods")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(VALID_REQUEST)))
                 .andExpect(status().isNotFound())
@@ -103,9 +105,7 @@ class FoodControllerTest {
     void search_returns200WithList() throws Exception {
         when(service.searchFoods(eq(USER_ID), eq("chicken"))).thenReturn(List.of(SAMPLE_RESPONSE));
 
-        mvc.perform(get("/api/v1/foods")
-                        .header("X-User-Id", USER_ID)
-                        .param("search", "chicken"))
+        mvc.perform(get("/api/v1/foods").param("search", "chicken"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Chicken Breast"));
     }
@@ -114,8 +114,7 @@ class FoodControllerTest {
     void delete_success_returns204() throws Exception {
         doNothing().when(service).deleteFood(USER_ID, FOOD_ID);
 
-        mvc.perform(delete("/api/v1/foods/{id}", FOOD_ID)
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(delete("/api/v1/foods/{id}", FOOD_ID))
                 .andExpect(status().isNoContent());
     }
 
@@ -123,8 +122,7 @@ class FoodControllerTest {
     void delete_forbidden_returns403() throws Exception {
         doThrow(new FoodAccessDeniedException(FOOD_ID)).when(service).deleteFood(USER_ID, FOOD_ID);
 
-        mvc.perform(delete("/api/v1/foods/{id}", FOOD_ID)
-                        .header("X-User-Id", USER_ID))
+        mvc.perform(delete("/api/v1/foods/{id}", FOOD_ID))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -137,7 +135,6 @@ class FoodControllerTest {
                         new BigDecimal("77"), new BigDecimal("2.9")));
 
         mvc.perform(post("/api/v1/foods/import")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fdcId\": 12345}"))
                 .andExpect(status().isCreated())
@@ -149,7 +146,6 @@ class FoodControllerTest {
         when(service.importFood(eq(USER_ID), any())).thenThrow(new UsdaFoodNotFoundException(99999));
 
         mvc.perform(post("/api/v1/foods/import")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fdcId\": 99999}"))
                 .andExpect(status().isNotFound())
@@ -162,7 +158,6 @@ class FoodControllerTest {
                 .thenThrow(new UsdaServiceUnavailableException("unreachable", null));
 
         mvc.perform(post("/api/v1/foods/import")
-                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fdcId\": 1}"))
                 .andExpect(status().isServiceUnavailable())

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, getUserId } from '../lib/api'
+import { api } from '../lib/api'
 import { useToast } from '../components/Toast'
 import type { UserResponse, GoalType } from '../lib/types'
 
@@ -22,9 +22,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const userId = getUserId()
-    if (!userId) return
-    api.get<UserResponse>(`/api/v1/users/${userId}`).then(u => {
+    api.get<UserResponse>('/api/v1/users/me').then(u => {
       setProfile(u)
       setForm({
         name: u.name,
@@ -38,11 +36,9 @@ export default function Profile() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const userId = getUserId()
-    if (!userId) return
     setSaving(true)
     try {
-      const updated = await api.put<UserResponse>(`/api/v1/users/${userId}`, {
+      const updated = await api.put<UserResponse>('/api/v1/users/me', {
         name: form.name,
         age: Number(form.age),
         weightKg: Number(form.weightKg),

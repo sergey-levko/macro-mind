@@ -1,10 +1,10 @@
 package com.epam.macromind.dashboard;
 
+import com.epam.macromind.common.SecurityUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -18,21 +18,18 @@ class DashboardController {
 
     @GetMapping("/daily")
     DailyDashboardResponse getDaily(
-            @RequestHeader("X-User-Id") UUID userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return dashboardService.getDailySummary(userId, date);
+        return dashboardService.getDailySummary(SecurityUtils.currentUserId(), date);
     }
 
     @GetMapping("/weekly")
     WeeklyDashboardResponse getWeekly(
-            @RequestHeader("X-User-Id") UUID userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        return dashboardService.getWeeklySummary(userId, weekStart);
+        return dashboardService.getWeeklySummary(SecurityUtils.currentUserId(), weekStart);
     }
 
     @GetMapping("/summary")
-    SummaryDashboardResponse getSummary(
-            @RequestHeader("X-User-Id") UUID userId) {
-        return dashboardService.getSummaryCard(userId);
+    SummaryDashboardResponse getSummary() {
+        return dashboardService.getSummaryCard(SecurityUtils.currentUserId());
     }
 }

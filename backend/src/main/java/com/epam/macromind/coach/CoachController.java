@@ -1,9 +1,8 @@
 package com.epam.macromind.coach;
 
+import com.epam.macromind.common.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/chat")
@@ -16,9 +15,7 @@ class CoachController {
     }
 
     @PostMapping
-    ChatResponse chat(
-            @RequestHeader("X-User-Id") UUID userId,
-            @Valid @RequestBody ChatRequest request) {
-        return coachService.chat(userId, request.message());
+    ChatResponse chat(@Valid @RequestBody ChatRequest request) {
+        return coachService.chat(SecurityUtils.currentUserId(), request.message());
     }
 }
