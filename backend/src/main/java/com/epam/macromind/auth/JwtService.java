@@ -14,7 +14,7 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
+    private static final long TTL_MS = 15L * 60 * 1000;
 
     private final SecretKey key;
 

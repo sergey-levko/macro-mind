@@ -41,7 +41,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void register_success_returns201WithToken() {
+    void register_success_returns201WithBothTokens() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> req = new HttpEntity<>(registerBody(UUID.randomUUID().toString()), headers);
@@ -50,7 +50,8 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 url("/api/v1/auth/register"), req, AuthResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody().token()).isNotBlank();
+        assertThat(response.getBody().accessToken()).isNotBlank();
+        assertThat(response.getBody().refreshToken()).isNotBlank();
         assertThat(response.getBody().user().email()).contains("@example.com");
     }
 
@@ -82,7 +83,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void login_success_returns200WithToken() {
+    void login_success_returns200WithBothTokens() {
         String suffix = UUID.randomUUID().toString();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -97,7 +98,8 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 url("/api/v1/auth/login"), new HttpEntity<>(loginBody, headers), AuthResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().token()).isNotBlank();
+        assertThat(response.getBody().accessToken()).isNotBlank();
+        assertThat(response.getBody().refreshToken()).isNotBlank();
     }
 
     @Test
@@ -138,5 +140,55 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 url("/api/v1/users/me"), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void fullFlow_registerLoginRefreshLogout() {
+        String suffix = UUID.randomUUID().toString();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Register
+        ResponseEntity<AuthResponse> registerResp = restTemplate.postForEntity(
+                url("/api/v1/auth/register"),
+                new HttpEntity<>(registerBody(suffix), headers), AuthResponse.class);
+        assertThat(registerResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String refreshToken = registerResp.getBody().refreshToken();
+        assertThat(refreshToken).isNotBlank();
+
+        // Refresh — get new tokens
+        String refreshBody = "{\"refreshToken\":\"%s\"}".formatted(refreshToken);
+        ResponseEntity<RefreshResponse> refreshResp = restTemplate.postForEntity(
+                url("/api/v1/auth/refresh"),
+                new HttpEntity<>(refreshBody, headers), RefreshResponse.class);
+        assertThat(refreshResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String newAccessToken = refreshResp.getBody().accessToken();
+        String newRefreshToken = refreshResp.getBody().refreshToken();
+        assertThat(newAccessToken).isNotBlank();
+        assertThat(newRefreshToken).isNotBlank();
+        assertThat(newRefreshToken).isNotEqualTo(refreshToken);
+
+        // Old refresh token is now revoked — second use returns 401
+        ResponseEntity<Map> reuseResp = restTemplate.postForEntity(
+                url("/api/v1/auth/refresh"),
+                new HttpEntity<>(refreshBody, headers), Map.class);
+        assertThat(reuseResp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        // Logout using new refresh token (authenticated)
+        HttpHeaders authHeaders = new HttpHeaders();
+        authHeaders.setContentType(MediaType.APPLICATION_JSON);
+        authHeaders.setBearerAuth(newAccessToken);
+        String logoutBody = "{\"refreshToken\":\"%s\"}".formatted(newRefreshToken);
+        ResponseEntity<Void> logoutResp = restTemplate.postForEntity(
+                url("/api/v1/auth/logout"),
+                new HttpEntity<>(logoutBody, authHeaders), Void.class);
+        assertThat(logoutResp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // After logout, the new refresh token is revoked
+        String newRefreshBody = "{\"refreshToken\":\"%s\"}".formatted(newRefreshToken);
+        ResponseEntity<Map> afterLogout = restTemplate.postForEntity(
+                url("/api/v1/auth/refresh"),
+                new HttpEntity<>(newRefreshBody, headers), Map.class);
+        assertThat(afterLogout.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

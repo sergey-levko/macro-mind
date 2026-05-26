@@ -1,11 +1,11 @@
 import { createContext, useContext, useState } from 'react'
 import type { UserResponse } from '../lib/types'
-import { getToken, setToken, clearToken } from '../lib/api'
+import { getToken, storeTokens, clearTokens } from '../lib/api'
 
 interface AuthContextValue {
   token: string | null
   user: UserResponse | null
-  login: (token: string, user: UserResponse) => void
+  login: (accessToken: string, refreshToken: string, user: UserResponse) => void
   logout: () => void
 }
 
@@ -15,14 +15,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(getToken)
   const [user, setUser] = useState<UserResponse | null>(null)
 
-  function login(newToken: string, newUser: UserResponse) {
-    setToken(newToken)
-    setTokenState(newToken)
+  function login(accessToken: string, refreshToken: string, newUser: UserResponse) {
+    storeTokens(accessToken, refreshToken)
+    setTokenState(accessToken)
     setUser(newUser)
   }
 
   function logout() {
-    clearToken()
+    const refreshToken = localStorage.getItem('macromind_refresh_token')
+    if (refreshToken) {
+      fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(() => {})
+    }
+    clearTokens()
     setTokenState(null)
     setUser(null)
   }
