@@ -622,6 +622,8 @@ export default function MealLog() {
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [copying, setCopying] = useState(false)
+  const [copyMessage, setCopyMessage] = useState('')
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -642,6 +644,22 @@ export default function MealLog() {
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
+  async function handleCopy() {
+    setCopying(true)
+    try {
+      const copied = await api.post<MealLogSummary[]>('/api/v1/meal-logs/copy-previous-day', { date: selectedDate })
+      if (copied.length === 0) {
+        setCopyMessage('No meals on previous day')
+        setTimeout(() => setCopyMessage(''), 3000)
+      } else {
+        setCopyMessage('')
+      }
+      loadLogs()
+    } finally {
+      setCopying(false)
+    }
+  }
+
   const byType = (type: MealType) => logs.filter(l => l.mealType === type)
   const isToday = selectedDate === todayIso()
 
@@ -652,6 +670,17 @@ export default function MealLog() {
           Meal Log — {formatDateLabel(selectedDate)}
         </h1>
         <div className="flex items-center gap-2">
+          {copyMessage && (
+            <span className="text-xs text-gray-400">{copyMessage}</span>
+          )}
+          <button
+            onClick={handleCopy}
+            disabled={copying}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            title="Copy previous day's meals"
+          >
+            {copying ? '…' : 'Copy previous day'}
+          </button>
           <button
             onClick={() => setSelectedDate(d => shiftDay(d, -1))}
             className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"

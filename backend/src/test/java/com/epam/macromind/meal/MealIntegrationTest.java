@@ -156,6 +156,55 @@ class MealIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void copyPreviousDay_copiesAllLogsAndItems() {
+        String token = register().accessToken();
+        UUID foodId = createFood(token);
+
+        String log1Body = "{\"mealType\":\"BREAKFAST\",\"loggedAt\":\"2024-01-01T00:00:00Z\"}";
+        ResponseEntity<MealLogResponse> log1 = restTemplate.exchange(
+                url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>(log1Body, headersFor(token)), MealLogResponse.class);
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log1.getBody().id() + "/items"), HttpMethod.POST,
+                new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}", headersFor(token)),
+                MealItemResponse.class);
+
+        String log2Body = "{\"mealType\":\"LUNCH\",\"loggedAt\":\"2024-01-01T00:00:00Z\"}";
+        ResponseEntity<MealLogResponse> log2 = restTemplate.exchange(
+                url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>(log2Body, headersFor(token)), MealLogResponse.class);
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log2.getBody().id() + "/items"), HttpMethod.POST,
+                new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":200}", headersFor(token)),
+                MealItemResponse.class);
+
+        ResponseEntity<MealLogSummaryResponse[]> copied = restTemplate.exchange(
+                url("/api/v1/meal-logs/copy-previous-day"), HttpMethod.POST,
+                new HttpEntity<>("{\"date\":\"2024-01-02\"}", headersFor(token)),
+                MealLogSummaryResponse[].class);
+
+        assertThat(copied.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(copied.getBody()).hasSize(2);
+
+        ResponseEntity<MealLogSummaryResponse[]> day2Logs = restTemplate.exchange(
+                url("/api/v1/meal-logs?date=2024-01-02"), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), MealLogSummaryResponse[].class);
+
+        assertThat(day2Logs.getBody()).hasSize(2);
+    }
+
+    @Test
+    void copyPreviousDay_noSourceMeals_returnsEmpty() {
+        String token = register().accessToken();
+
+        ResponseEntity<MealLogSummaryResponse[]> response = restTemplate.exchange(
+                url("/api/v1/meal-logs/copy-previous-day"), HttpMethod.POST,
+                new HttpEntity<>("{\"date\":\"2099-06-15\"}", headersFor(token)),
+                MealLogSummaryResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEmpty();
+    }
+
+    @Test
     void addItem_toAnotherUsersLog_returns403() {
         String ownerToken = register().accessToken();
         String otherToken = register().accessToken();
