@@ -15,6 +15,10 @@ The Coach page SHALL display an insights panel with two sub-tabs: Daily and Week
 - **WHEN** the advice endpoint returns an error
 - **THEN** the insights panel shows a non-blocking error message and the chat panel remains fully functional
 
+#### Scenario: Saved weekly insight shows a formatted week range label
+- **WHEN** a saved weekly insight is displayed in the Weekly sub-tab
+- **THEN** the insight card shows a formatted week range label (e.g., "May 19 – May 25") derived from the insight's `periodStart` date
+
 ### Requirement: Daily insights support day-by-day navigation
 The Daily insights sub-tab SHALL allow the user to navigate between days using Previous and Next buttons and a date picker, mirroring the Meal Log day-navigation pattern. Navigation SHALL be capped at today (no future dates).
 
