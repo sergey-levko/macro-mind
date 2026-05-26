@@ -150,6 +150,15 @@ class FoodServiceTest {
     }
 
     @Test
+    void getRecentFoods_capsLimitAt10() {
+        when(foodRepository.findRecentByUserId(USER_ID, 10)).thenReturn(List.of());
+
+        service.getRecentFoods(USER_ID, 50);
+
+        verify(foodRepository).findRecentByUserId(USER_ID, 10);
+    }
+
+    @Test
     void importFood_success_persistsWithUsdaSource() {
         UsdaFoodDto dto = new UsdaFoodDto("Brown Rice",
                 List.of(
