@@ -143,10 +143,10 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     setDropdownOpen(true)
     debounceRef.current = setTimeout(async () => {
       const [foodsResult, usdaResult] = await Promise.allSettled([
-        api.get<Food[]>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
+        api.get<{ content: Food[] }>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
         api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
       ])
-      const foods = foodsResult.status === 'fulfilled' ? foodsResult.value : []
+      const foods = foodsResult.status === 'fulfilled' ? foodsResult.value.content : []
       const usda = usdaResult.status === 'fulfilled' ? usdaResult.value : []
       setResults(foods)
       setUsdaResults(usda)
