@@ -1,5 +1,6 @@
 package com.epam.macromind.meal;
 
+import com.epam.macromind.AbstractIntegrationTest;
 import com.epam.macromind.auth.AuthResponse;
 import com.epam.macromind.food.CreateFoodRequest;
 import com.epam.macromind.food.FoodResponse;
@@ -8,13 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -23,12 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class MealIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+class MealIntegrationTest extends AbstractIntegrationTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -91,8 +83,9 @@ class MealIntegrationTest {
         assertThat(created.getBody().mealType()).isEqualTo(MealType.BREAKFAST);
         UUID logId = created.getBody().id();
 
-        ResponseEntity<MealLogResponse> fetched = restTemplate.getForEntity(
-                url("/api/v1/meal-logs/" + logId), MealLogResponse.class);
+        ResponseEntity<MealLogResponse> fetched = restTemplate.exchange(
+                url("/api/v1/meal-logs/" + logId), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), MealLogResponse.class);
 
         assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(fetched.getBody().id()).isEqualTo(logId);
@@ -156,8 +149,9 @@ class MealIntegrationTest {
 
         assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        ResponseEntity<Map> fetched = restTemplate.getForEntity(
-                url("/api/v1/meal-logs/" + logId), Map.class);
+        ResponseEntity<Map> fetched = restTemplate.exchange(
+                url("/api/v1/meal-logs/" + logId), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), Map.class);
         assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 

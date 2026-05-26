@@ -1,5 +1,6 @@
 package com.epam.macromind.advice;
 
+import com.epam.macromind.AbstractIntegrationTest;
 import com.epam.macromind.auth.AuthResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,14 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -27,12 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class AiAdviceIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+class AiAdviceIntegrationTest extends AbstractIntegrationTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -112,8 +104,9 @@ class AiAdviceIntegrationTest {
 
         UUID adviceId = generated.getBody().id();
 
-        ResponseEntity<AiAdviceResponse> retrieved = restTemplate.getForEntity(
-                url("/api/v1/advice/" + adviceId), AiAdviceResponse.class);
+        ResponseEntity<AiAdviceResponse> retrieved = restTemplate.exchange(
+                url("/api/v1/advice/" + adviceId), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), AiAdviceResponse.class);
         assertThat(retrieved.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(retrieved.getBody().id()).isEqualTo(adviceId);
 

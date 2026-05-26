@@ -1,5 +1,6 @@
 package com.epam.macromind.dashboard;
 
+import com.epam.macromind.AbstractIntegrationTest;
 import com.epam.macromind.auth.AuthResponse;
 import com.epam.macromind.food.CreateFoodRequest;
 import com.epam.macromind.food.FoodResponse;
@@ -9,13 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -26,12 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class DashboardIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+class DashboardIntegrationTest extends AbstractIntegrationTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -82,11 +74,12 @@ class DashboardIntegrationTest {
     }
 
     private void createMealLog(String token, UUID foodId, String date) {
-        String body = String.format(
-                "{\"mealType\":\"LUNCH\",\"loggedAt\":\"%sT12:00:00Z\",\"items\":[{\"foodId\":\"%s\",\"quantityG\":200}]}",
-                date, foodId);
-        restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
-                new HttpEntity<>(body, headersFor(token)), MealLogResponse.class);
+        String logBody = String.format("{\"mealType\":\"LUNCH\",\"loggedAt\":\"%sT12:00:00Z\"}", date);
+        MealLogResponse log = restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>(logBody, headersFor(token)), MealLogResponse.class).getBody();
+        String itemBody = String.format("{\"foodId\":\"%s\",\"quantityG\":200}", foodId);
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log.id() + "/items"), HttpMethod.POST,
+                new HttpEntity<>(itemBody, headersFor(token)), Object.class);
     }
 
     @Test
