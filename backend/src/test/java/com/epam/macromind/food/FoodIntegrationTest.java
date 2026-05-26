@@ -222,6 +222,54 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void getRecentFoods_returnsDistinctFoodsOrderedByLastUsed() {
+        String tokenA = register();
+        String tokenB = register();
+
+        CreateFoodRequest reqX = new CreateFoodRequest("Food X",
+                new BigDecimal("165"), new BigDecimal("31"), BigDecimal.ZERO, new BigDecimal("3.6"));
+        UUID foodXId = restTemplate.exchange(url("/api/v1/foods"), HttpMethod.POST,
+                new HttpEntity<>(reqX, headersFor(tokenA)), FoodResponse.class).getBody().id();
+
+        CreateFoodRequest reqY = new CreateFoodRequest("Food Y",
+                new BigDecimal("200"), new BigDecimal("20"), new BigDecimal("10"), new BigDecimal("5"));
+        UUID foodYId = restTemplate.exchange(url("/api/v1/foods"), HttpMethod.POST,
+                new HttpEntity<>(reqY, headersFor(tokenA)), FoodResponse.class).getBody().id();
+
+        // Log food Y on day 1
+        UUID log1Id = UUID.fromString((String) restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>("{\"mealType\":\"BREAKFAST\",\"loggedAt\":\"2024-01-01T10:00:00Z\"}", headersFor(tokenA)),
+                Map.class).getBody().get("id"));
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log1Id + "/items"), HttpMethod.POST,
+                new HttpEntity<>("{\"foodId\":\"" + foodYId + "\",\"quantityG\":100}", headersFor(tokenA)), Map.class);
+
+        // Log food X on day 1 (dedup test) and also on day 2 (so X is most recent)
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log1Id + "/items"), HttpMethod.POST,
+                new HttpEntity<>("{\"foodId\":\"" + foodXId + "\",\"quantityG\":100}", headersFor(tokenA)), Map.class);
+        UUID log2Id = UUID.fromString((String) restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>("{\"mealType\":\"LUNCH\",\"loggedAt\":\"2024-01-02T10:00:00Z\"}", headersFor(tokenA)),
+                Map.class).getBody().get("id"));
+        restTemplate.exchange(url("/api/v1/meal-logs/" + log2Id + "/items"), HttpMethod.POST,
+                new HttpEntity<>("{\"foodId\":\"" + foodXId + "\",\"quantityG\":150}", headersFor(tokenA)), Map.class);
+
+        // User A: X is most recent (day 2), Y is second (day 1), X deduped to one entry
+        ResponseEntity<FoodResponse[]> response = restTemplate.exchange(
+                url("/api/v1/foods/recent"), HttpMethod.GET,
+                new HttpEntity<>(headersFor(tokenA)), FoodResponse[].class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(2);
+        assertThat(response.getBody()[0].id()).isEqualTo(foodXId);
+        assertThat(response.getBody()[1].id()).isEqualTo(foodYId);
+
+        // User B sees empty list (no logs)
+        ResponseEntity<FoodResponse[]> responseB = restTemplate.exchange(
+                url("/api/v1/foods/recent"), HttpMethod.GET,
+                new HttpEntity<>(headersFor(tokenB)), FoodResponse[].class);
+        assertThat(responseB.getBody()).isEmpty();
+    }
+
+    @Test
     void importFood_fromUsda_persistsWithUsdaSource() {
         String token = register();
         String usdaResponse = """
