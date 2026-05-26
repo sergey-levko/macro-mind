@@ -64,12 +64,15 @@ class MealService {
         return logs.stream().map(l -> toSummary(l, foodMap)).toList();
     }
 
-    List<MealLogSummaryResponse> copyPreviousDay(UUID userId, LocalDate targetDate) {
+    List<MealLogSummaryResponse> copyPreviousDay(UUID userId, LocalDate targetDate, MealType mealType) {
         LocalDate sourceDate = targetDate.minusDays(1);
         Instant sourceStart = sourceDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant sourceEnd = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         List<MealLog> sourceLogs = mealLogRepository
                 .findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, sourceStart, sourceEnd);
+        if (mealType != null) {
+            sourceLogs = sourceLogs.stream().filter(l -> l.getMealType() == mealType).toList();
+        }
         if (sourceLogs.isEmpty()) return List.of();
         Instant targetLoggedAt = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Set<UUID> foodIds = sourceLogs.stream()
