@@ -36,6 +36,13 @@ function shiftDay(iso: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function mondayOf(iso: string): string {
+  const d = new Date(iso + 'T12:00:00')
+  const day = d.getDay()
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function formatDateLabel(iso: string): string {
   const today = todayStr()
   const d = new Date(iso + 'T12:00:00')
@@ -44,6 +51,20 @@ function formatDateLabel(iso: string): string {
   if (iso === today) return `Today, ${dateStr}`
   if (iso === yIso) return `Yesterday, ${dateStr}`
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+function formatWeekLabel(iso: string): string {
+  const monday = new Date(iso + 'T12:00:00')
+  const sunday = new Date(iso + 'T12:00:00')
+  sunday.setDate(sunday.getDate() + 6)
+  const startStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endOpts: Intl.DateTimeFormatOptions = monday.getMonth() !== sunday.getMonth()
+    ? { month: 'short', day: 'numeric' }
+    : { day: 'numeric' }
+  const endStr = sunday.toLocaleDateString('en-US', endOpts)
+  const range = `${startStr} – ${endStr}`
+  if (iso === mondayStr()) return `This week (${range})`
+  return range
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,6 +152,58 @@ function DayNavDatePicker({ selected, onSelect }: {
                 const m = String(date.getMonth() + 1).padStart(2, '0')
                 const d = String(date.getDate()).padStart(2, '0')
                 onSelect(`${y}-${m}-${d}`)
+                setOpen(false)
+              }
+            }}
+            disabled={{ after: new Date() }}
+            classNames={dayPickerClassNames}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WeekNavDatePicker({ selected, onSelect }: {
+  selected: string
+  onSelect: (iso: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="px-3 py-1.5 text-sm rounded-lg border bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-200 transition-colors"
+        title="Pick a week"
+      >
+        {formatWeekLabel(selected)}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50">
+          <DayPicker
+            mode="single"
+            ISOWeek
+            selected={new Date(selected + 'T12:00:00')}
+            defaultMonth={new Date(selected + 'T12:00:00')}
+            onSelect={date => {
+              if (date) {
+                const y = date.getFullYear()
+                const m = String(date.getMonth() + 1).padStart(2, '0')
+                const d = String(date.getDate()).padStart(2, '0')
+                onSelect(mondayOf(`${y}-${m}-${d}`))
                 setOpen(false)
               }
             }}
@@ -238,6 +311,7 @@ export default function Coach() {
   const [tab, setTab] = useState<'chat' | 'insights'>('chat')
   const [insightPeriod, setInsightPeriod] = useState<'daily' | 'weekly'>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
+  const [selectedWeek, setSelectedWeek] = useState(mondayStr())
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -246,8 +320,10 @@ export default function Coach() {
 
   const [dailyInsight, setDailyInsight] = useState<AdviceResponse | null>(null)
   const [weeklyInsight, setWeeklyInsight] = useState<AdviceResponse | null>(null)
-  const [insightsLoading, setInsightsLoading] = useState(true)
-  const [insightsError, setInsightsError] = useState(false)
+  const [dailyLoading, setDailyLoading] = useState(true)
+  const [weeklyLoading, setWeeklyLoading] = useState(true)
+  const [dailyError, setDailyError] = useState(false)
+  const [weeklyError, setWeeklyError] = useState(false)
 
   const [previewDaily, setPreviewDaily] = useState<string | null>(null)
   const [previewWeekly, setPreviewWeekly] = useState<string | null>(null)
@@ -259,29 +335,46 @@ export default function Coach() {
   const [needGoalWeekly, setNeedGoalWeekly] = useState(false)
 
   useEffect(() => {
-    async function loadInsights() {
-      setInsightsLoading(true)
-      setInsightsError(false)
+    async function loadDaily() {
+      setDailyLoading(true)
+      setDailyError(false)
       try {
-        const [daily, weekly] = await Promise.all([
-          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`),
-          api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${mondayStr()}`),
-        ])
+        const daily = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`)
         setDailyInsight(daily[0] ?? null)
-        setWeeklyInsight(weekly[0] ?? null)
       } catch {
-        setInsightsError(true)
+        setDailyError(true)
       } finally {
-        setInsightsLoading(false)
+        setDailyLoading(false)
       }
     }
-    loadInsights()
+    loadDaily()
   }, [selectedDate])
 
   useEffect(() => {
     setPreviewDaily(null)
     setNeedGoalDaily(false)
   }, [selectedDate])
+
+  useEffect(() => {
+    async function loadWeekly() {
+      setWeeklyLoading(true)
+      setWeeklyError(false)
+      try {
+        const weekly = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${selectedWeek}`)
+        setWeeklyInsight(weekly[0] ?? null)
+      } catch {
+        setWeeklyError(true)
+      } finally {
+        setWeeklyLoading(false)
+      }
+    }
+    loadWeekly()
+  }, [selectedWeek])
+
+  useEffect(() => {
+    setPreviewWeekly(null)
+    setNeedGoalWeekly(false)
+  }, [selectedWeek])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -296,7 +389,7 @@ export default function Coach() {
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
-        periodStart: type === 'DAILY' ? selectedDate : mondayStr(),
+        periodStart: type === 'DAILY' ? selectedDate : selectedWeek,
         preview: true,
       })
       setPreview(result.content)
@@ -316,7 +409,7 @@ export default function Coach() {
     try {
       const result = await api.post<AdviceResponse>('/api/v1/advice', {
         adviceType: type,
-        periodStart: type === 'DAILY' ? selectedDate : mondayStr(),
+        periodStart: type === 'DAILY' ? selectedDate : selectedWeek,
         content,
       })
       setInsight(result)
@@ -435,15 +528,7 @@ export default function Coach() {
             <button className={pillCls(insightPeriod === 'weekly')} onClick={() => setInsightPeriod('weekly')}>Weekly</button>
           </div>
 
-          {insightsLoading ? (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-              <p className="text-sm text-gray-500">Loading…</p>
-            </div>
-          ) : insightsError ? (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-              <p className="text-sm text-red-400">Could not load insights.</p>
-            </div>
-          ) : insightPeriod === 'daily' ? (
+          {insightPeriod === 'daily' ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <button
@@ -462,33 +547,89 @@ export default function Coach() {
                 >
                   →
                 </button>
+                {selectedDate !== todayStr() && (
+                  <button
+                    onClick={() => setSelectedDate(todayStr())}
+                    className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs rounded-lg transition-colors"
+                  >
+                    Today
+                  </button>
+                )}
               </div>
-              <InsightPanel
-                type="DAILY"
-                periodLabel={formatDateLabel(selectedDate).toLowerCase()}
-                insight={dailyInsight}
-                preview={previewDaily}
-                generating={generatingDaily}
-                saving={savingDaily}
-                needGoal={needGoalDaily}
-                onGenerate={() => generateInsight('DAILY')}
-                onSave={() => saveInsight('DAILY')}
-                onDiscard={() => setPreviewDaily(null)}
-              />
+              {dailyLoading ? (
+                <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                  <p className="text-sm text-gray-500">Loading…</p>
+                </div>
+              ) : dailyError ? (
+                <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                  <p className="text-sm text-red-400">Could not load insights.</p>
+                </div>
+              ) : (
+                <InsightPanel
+                  type="DAILY"
+                  periodLabel={formatDateLabel(selectedDate).toLowerCase()}
+                  insight={dailyInsight}
+                  preview={previewDaily}
+                  generating={generatingDaily}
+                  saving={savingDaily}
+                  needGoal={needGoalDaily}
+                  onGenerate={() => generateInsight('DAILY')}
+                  onSave={() => saveInsight('DAILY')}
+                  onDiscard={() => setPreviewDaily(null)}
+                />
+              )}
             </div>
           ) : (
-            <InsightPanel
-              type="WEEKLY"
-              periodLabel="this week"
-              insight={weeklyInsight}
-              preview={previewWeekly}
-              generating={generatingWeekly}
-              saving={savingWeekly}
-              needGoal={needGoalWeekly}
-              onGenerate={() => generateInsight('WEEKLY')}
-              onSave={() => saveInsight('WEEKLY')}
-              onDiscard={() => setPreviewWeekly(null)}
-            />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedWeek(shiftDay(selectedWeek, -7))}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors text-sm"
+                  title="Previous week"
+                >
+                  ←
+                </button>
+                <WeekNavDatePicker selected={selectedWeek} onSelect={setSelectedWeek} />
+                <button
+                  onClick={() => setSelectedWeek(shiftDay(selectedWeek, 7))}
+                  disabled={selectedWeek === mondayStr()}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors text-sm"
+                  title="Next week"
+                >
+                  →
+                </button>
+                {selectedWeek !== mondayStr() && (
+                  <button
+                    onClick={() => setSelectedWeek(mondayStr())}
+                    className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs rounded-lg transition-colors"
+                  >
+                    This week
+                  </button>
+                )}
+              </div>
+              {weeklyLoading ? (
+                <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                  <p className="text-sm text-gray-500">Loading…</p>
+                </div>
+              ) : weeklyError ? (
+                <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+                  <p className="text-sm text-red-400">Could not load insights.</p>
+                </div>
+              ) : (
+                <InsightPanel
+                  type="WEEKLY"
+                  periodLabel={formatWeekLabel(selectedWeek).toLowerCase()}
+                  insight={weeklyInsight}
+                  preview={previewWeekly}
+                  generating={generatingWeekly}
+                  saving={savingWeekly}
+                  needGoal={needGoalWeekly}
+                  onGenerate={() => generateInsight('WEEKLY')}
+                  onSave={() => saveInsight('WEEKLY')}
+                  onDiscard={() => setPreviewWeekly(null)}
+                />
+              )}
+            </div>
           )}
         </div>
       )}
