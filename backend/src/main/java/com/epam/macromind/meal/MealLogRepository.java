@@ -13,4 +13,7 @@ public interface MealLogRepository extends JpaRepository<MealLog, UUID> {
 
     @Query("SELECT m FROM MealLog m LEFT JOIN FETCH m.items WHERE m.userId = :userId AND m.loggedAt >= :start AND m.loggedAt < :end")
     List<MealLog> findWithItemsByUserIdAndLoggedAtBetween(@Param("userId") UUID userId, @Param("start") Instant start, @Param("end") Instant end);
+
+    @Query("SELECT DISTINCT m.userId FROM MealLog m WHERE m.loggedAt >= :start AND m.loggedAt < :end")
+    List<UUID> findDistinctUserIdsByLoggedAtBetween(@Param("start") Instant start, @Param("end") Instant end);
 }
