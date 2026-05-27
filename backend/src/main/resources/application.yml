@@ -36,3 +36,8 @@ jwt:
 
 server:
   port: 8080
+
+insights:
+  schedule:
+    daily-cron: "0 0 2 * * *"
+    weekly-cron: "0 30 23 * * SUN"
