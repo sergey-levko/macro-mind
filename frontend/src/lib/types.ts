@@ -117,6 +117,14 @@ export interface UsdaFoodResult {
   description: string
 }
 
+export interface MealTemplate {
+  id: string
+  name: string
+  createdAt: string
+  itemCount: number
+  totals: MacroTotals
+}
+
 export interface AuthResponse {
   accessToken: string
   refreshToken: string

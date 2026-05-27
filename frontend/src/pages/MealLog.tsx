@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { api } from '../lib/api'
-import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
+import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult, MealTemplate } from '../lib/types'
 
 const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -650,12 +650,116 @@ function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect:
   )
 }
 
+// ─── Templates Tab ────────────────────────────────────────────────────────────
+
+interface TemplatesTabProps {
+  selectedDate: string
+  hasLogs: boolean
+  onApplied: () => void
+}
+
+function TemplatesTab({ selectedDate, hasLogs, onApplied }: TemplatesTabProps) {
+  const [templates, setTemplates] = useState<MealTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await api.get<MealTemplate[]>('/api/v1/meal-templates')
+      setTemplates(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadTemplates() }, [loadTemplates])
+
+  async function handleSave() {
+    const name = window.prompt('Template name:')
+    if (!name?.trim()) return
+    setSaving(true)
+    try {
+      await api.post('/api/v1/meal-templates', { name: name.trim(), date: selectedDate })
+      loadTemplates()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleApply(id: string) {
+    await api.post(`/api/v1/meal-templates/${id}/apply`, { date: selectedDate })
+    onApplied()
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this template?')) return
+    await api.delete(`/api/v1/meal-templates/${id}`)
+    setTemplates(ts => ts.filter(t => t.id !== id))
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-gray-400">Loading…</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={!hasLogs || saving}
+          title={!hasLogs ? 'No meals logged on this date' : undefined}
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+        >
+          {saving ? '…' : 'Save today as template'}
+        </button>
+      </div>
+      {templates.length === 0 ? (
+        <p className="text-sm text-gray-500">No templates saved yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {templates.map(t => (
+            <div key={t.id} className="bg-gray-900 rounded-2xl border border-gray-800 p-5 flex items-start justify-between">
+              <div>
+                <p className="text-white font-medium">{t.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.itemCount} item{t.itemCount !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {Math.round(Number(t.totals.caloriesKcal))} kcal · P {Math.round(Number(t.totals.proteinG))}g · C {Math.round(Number(t.totals.carbsG))}g · F {Math.round(Number(t.totals.fatG))}g
+                </p>
+              </div>
+              <div className="flex gap-2 ml-4 shrink-0">
+                <button
+                  onClick={() => handleApply(t.id)}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-sm rounded-lg transition-colors"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm rounded-lg border border-gray-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Meal Log Page ────────────────────────────────────────────────────────────
 
 export default function MealLog() {
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'log' | 'templates'>('log')
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -704,7 +808,28 @@ export default function MealLog() {
           </button>
         </div>
       </div>
-      {loading ? (
+      <div className="flex gap-1 border-b border-gray-800">
+        {(['log', 'templates'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm capitalize transition-colors ${
+              activeTab === tab
+                ? 'text-white border-b-2 border-teal-400 -mb-px'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {tab === 'log' ? 'Log' : 'Templates'}
+          </button>
+        ))}
+      </div>
+      {activeTab === 'templates' ? (
+        <TemplatesTab
+          selectedDate={selectedDate}
+          hasLogs={logs.length > 0}
+          onApplied={() => { setActiveTab('log'); loadLogs() }}
+        />
+      ) : loading ? (
         <div className="flex items-center justify-center min-h-64">
           <div className="text-gray-400">Loading…</div>
         </div>
