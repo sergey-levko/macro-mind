@@ -29,7 +29,7 @@ class InsightScheduler {
         this.adviceService = adviceService;
     }
 
-    @Scheduled(cron = "${insights.schedule.daily-cron}")
+    @Scheduled(cron = "${insights.schedule.daily-cron:0 0 2 * * *}")
     void generateDailyInsights() {
         LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
         var start = yesterday.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -52,7 +52,7 @@ class InsightScheduler {
         }
     }
 
-    @Scheduled(cron = "${insights.schedule.weekly-cron}")
+    @Scheduled(cron = "${insights.schedule.weekly-cron:0 30 23 * * SUN}")
     void generateWeeklyInsights() {
         LocalDate monday = LocalDate.now(ZoneOffset.UTC).with(DayOfWeek.MONDAY);
         var start = monday.atStartOfDay(ZoneOffset.UTC).toInstant();
