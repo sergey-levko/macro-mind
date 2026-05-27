@@ -133,7 +133,7 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void generateAdvice_duplicateNonPreview_returns200WithSameId() {
+    void generateAdvice_duplicateNonPreview_returns202WithNewId() {
         String token = register();
         setGoal(token);
 
@@ -148,8 +148,8 @@ class AiAdviceIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<AiAdviceResponse> second = restTemplate.exchange(
                 url("/api/v1/advice"), HttpMethod.POST,
                 new HttpEntity<>(body, headersFor(token)), AiAdviceResponse.class);
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(second.getBody().id()).isEqualTo(firstId);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(second.getBody().id()).isNotEqualTo(firstId);
     }
 
     @Test

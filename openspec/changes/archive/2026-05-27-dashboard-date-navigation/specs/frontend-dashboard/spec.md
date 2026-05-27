@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Daily macro summary card
 The system SHALL display the selected date's macro intake and percentage completion against the user's nutritional goal targets. The selected date defaults to today and can be changed via the date navigator.
@@ -34,6 +34,8 @@ The system SHALL display a bar chart showing daily calorie intake across the wee
 - **WHEN** the user navigates to a date in a different week
 - **THEN** the chart re-fetches `GET /api/v1/dashboard/weekly?weekStart=<monday-of-selected-week>` and shows the new week's data
 
+## ADDED Requirements
+
 ### Requirement: Dashboard date navigator
 The dashboard SHALL include a date navigator that allows the user to move between days to review past macro performance.
 
@@ -56,37 +58,3 @@ The dashboard SHALL include a date navigator that allows the user to move betwee
 #### Scenario: Today shortcut resets to current date
 - **WHEN** the user is viewing a past date and clicks the Today button
 - **THEN** the selected date resets to today and both the summary card and weekly chart re-fetch
-
-### Requirement: Inline nutritional goal setting
-The system SHALL allow the user to set or update their nutritional goal directly from the dashboard.
-
-#### Scenario: Goal form appears when no goal is set
-- **WHEN** the user views the dashboard and has no nutritional goal
-- **THEN** a goal-setting form is visible with fields for calorie target, protein, carbs, and fat
-
-#### Scenario: Existing goal values are pre-filled
-- **WHEN** the user opens the goal form and a goal already exists
-- **THEN** the form fields are pre-filled with the current target values
-
-#### Scenario: Saving goal updates the summary card
-- **WHEN** the user submits the goal form with valid values
-- **THEN** the app calls `PUT /api/v1/nutritional-goals` and the summary card re-renders with the new targets without a full page reload
-
-### Requirement: Generate nutritional goal with AI
-The system SHALL allow the user to generate a nutritional goal suggestion from the dashboard goal form using Claude.
-
-#### Scenario: Generate with AI button pre-fills the form
-- **WHEN** the user clicks "Generate with AI" in the goal form
-- **THEN** the app calls `POST /api/v1/nutritional-goals/generate` and pre-fills the `caloriesTarget`, `proteinG`, `carbsG`, and `fatG` fields with the returned values
-
-#### Scenario: Loading state while generation is in flight
-- **WHEN** the AI generation request is in flight
-- **THEN** the "Generate with AI" button shows a loading indicator and is disabled until the response arrives
-
-#### Scenario: Error state when generation fails
-- **WHEN** the `POST /api/v1/nutritional-goals/generate` call fails
-- **THEN** the app displays the message "Generation failed, please try again" and the form fields remain unchanged
-
-#### Scenario: User must explicitly save the suggestion
-- **WHEN** the form fields are pre-filled with the AI suggestion
-- **THEN** the goal is not persisted until the user explicitly clicks "Save"
