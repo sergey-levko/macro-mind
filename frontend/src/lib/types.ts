@@ -57,6 +57,12 @@ export interface SummaryCard {
   percentages: MacroPercentages | null
 }
 
+export interface DailySummary {
+  date: string
+  totals: MacroTotals
+  targets: MacroTargets | null
+}
+
 export interface DailyEntry {
   date: string
   totals: MacroTotals

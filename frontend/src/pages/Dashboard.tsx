@@ -2,7 +2,42 @@ import { useEffect, useState, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '../lib/api'
 import { useToast } from '../components/Toast'
-import type { SummaryCard, WeeklySummary, NutritionalGoal } from '../lib/types'
+import type { DailySummary, WeeklySummary, NutritionalGoal } from '../lib/types'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function todayStr(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
+function mondayOfDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split('T')[0]
+}
+
+function formatDateLabel(dateStr: string): string {
+  const today = todayStr()
+  const yesterday = addDays(today, -1)
+  const d = new Date(dateStr + 'T12:00:00')
+  const label = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  if (dateStr === today) return `Today, ${label}`
+  if (dateStr === yesterday) return `Yesterday, ${label}`
+  return label
+}
+
+function computePct(value: number, target: number | null): number | null {
+  if (!target) return null
+  return Math.min(200, Math.round((value / target) * 100))
+}
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 
@@ -183,14 +218,6 @@ function GoalForm({ existing, onSaved }: GoalFormProps) {
 
 // ─── Weekly Chart ─────────────────────────────────────────────────────────────
 
-function getMonday(d = new Date()): string {
-  const date = new Date(d)
-  const day = date.getDay()
-  const diff = (day === 0 ? -6 : 1) - day
-  date.setDate(date.getDate() + diff)
-  return date.toISOString().split('T')[0]
-}
-
 interface WeeklyChartProps {
   data: WeeklySummary
 }
@@ -233,26 +260,28 @@ function WeeklyChart({ data }: WeeklyChartProps) {
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState<SummaryCard | null>(null)
+  const [selectedDate, setSelectedDate] = useState(todayStr)
+  const [dailyData, setDailyData] = useState<DailySummary | null>(null)
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null)
   const [goal, setGoal] = useState<NutritionalGoal | null | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
+    const weekStart = mondayOfDate(selectedDate)
     try {
-      const [s, w, g] = await Promise.allSettled([
-        api.get<SummaryCard>('/api/v1/dashboard/summary'),
-        api.get<WeeklySummary>(`/api/v1/dashboard/weekly?weekStart=${getMonday()}`),
+      const [d, w, g] = await Promise.allSettled([
+        api.get<DailySummary>(`/api/v1/dashboard/daily?date=${selectedDate}`),
+        api.get<WeeklySummary>(`/api/v1/dashboard/weekly?weekStart=${weekStart}`),
         api.get<NutritionalGoal>('/api/v1/nutritional-goals'),
       ])
-      if (s.status === 'fulfilled') setSummary(s.value)
+      if (d.status === 'fulfilled') setDailyData(d.value)
       if (w.status === 'fulfilled') setWeekly(w.value)
       setGoal(g.status === 'fulfilled' ? g.value : null)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => { load() }, [load])
 
@@ -264,17 +293,45 @@ export default function Dashboard() {
     )
   }
 
-  const totals = summary?.totals
-  const targets = summary?.targets
-  const pcts = summary?.percentages
+  const totals = dailyData?.totals
+  const targets = dailyData?.targets
+  const isToday = selectedDate === todayStr()
 
   return (
     <div className="p-8 space-y-6 max-w-4xl">
       <h1 className="text-2xl font-bold text-white">Dashboard</h1>
 
+      {/* Date navigator */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setSelectedDate(d => addDays(d, -1))}
+          className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+          title="Previous day"
+        >
+          ‹
+        </button>
+        <span className="text-sm font-medium text-gray-200">{formatDateLabel(selectedDate)}</span>
+        <button
+          onClick={() => setSelectedDate(d => addDays(d, 1))}
+          disabled={isToday}
+          className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+          title="Next day"
+        >
+          ›
+        </button>
+        {!isToday && (
+          <button
+            onClick={() => setSelectedDate(todayStr())}
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-teal-400 text-sm rounded-lg border border-gray-700 transition-colors"
+          >
+            Today
+          </button>
+        )}
+      </div>
+
       {/* Summary card */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">Today's Intake</h2>
+        <h2 className="text-lg font-semibold text-white">{formatDateLabel(selectedDate)}</h2>
         {!targets && (
           <p className="text-sm text-amber-400">No nutritional goal set — set one below to see progress.</p>
         )}
@@ -282,7 +339,7 @@ export default function Dashboard() {
           label="Calories"
           value={Math.round(Number(totals?.caloriesKcal ?? 0))}
           target={targets ? Math.round(Number(targets.caloriesTarget)) : null}
-          pct={pcts?.caloriesPct ?? null}
+          pct={computePct(Number(totals?.caloriesKcal ?? 0), targets?.caloriesTarget ?? null)}
           unit="kcal"
           color="#14b8a6"
         />
@@ -290,21 +347,21 @@ export default function Dashboard() {
           label="Protein"
           value={Math.round(Number(totals?.proteinG ?? 0))}
           target={targets ? Math.round(Number(targets.proteinG)) : null}
-          pct={pcts?.proteinPct ?? null}
+          pct={computePct(Number(totals?.proteinG ?? 0), targets?.proteinG ?? null)}
           color="#818cf8"
         />
         <MacroBar
           label="Carbs"
           value={Math.round(Number(totals?.carbsG ?? 0))}
           target={targets ? Math.round(Number(targets.carbsG)) : null}
-          pct={pcts?.carbsPct ?? null}
+          pct={computePct(Number(totals?.carbsG ?? 0), targets?.carbsG ?? null)}
           color="#fb923c"
         />
         <MacroBar
           label="Fat"
           value={Math.round(Number(totals?.fatG ?? 0))}
           target={targets ? Math.round(Number(targets.fatG)) : null}
-          pct={pcts?.fatPct ?? null}
+          pct={computePct(Number(totals?.fatG ?? 0), targets?.fatG ?? null)}
           color="#facc15"
         />
       </div>
