@@ -117,6 +117,18 @@ export interface UsdaFoodResult {
   description: string
 }
 
+export interface MealTemplateItem {
+  foodId: string
+  foodName: string
+}
+
+export interface MealTemplate {
+  id: string
+  name: string
+  createdAt: string
+  items: MealTemplateItem[]
+}
+
 export interface AuthResponse {
   accessToken: string
   refreshToken: string

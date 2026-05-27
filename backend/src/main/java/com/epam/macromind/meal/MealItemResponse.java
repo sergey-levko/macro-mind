@@ -3,7 +3,7 @@ package com.epam.macromind.meal;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-record MealItemResponse(
+public record MealItemResponse(
         UUID itemId,
         UUID foodId,
         String foodName,

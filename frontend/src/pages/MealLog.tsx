@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { api } from '../lib/api'
-import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult } from '../lib/types'
+import type { MealLog, MealLogSummary, MealType, Food, MealItemResponse, UsdaFoodResult, MealTemplate, MealTemplateItem } from '../lib/types'
 
 const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -484,6 +484,7 @@ interface MealSectionProps {
   onCreated: () => void
   onDeleted: () => void
   onItemChanged: () => void
+  onTemplateSaved?: () => void
 }
 
 function currentTimeHHMM(): string {
@@ -491,11 +492,13 @@ function currentTimeHHMM(): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
 
-function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, onItemChanged }: MealSectionProps) {
+function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, onItemChanged, onTemplateSaved }: MealSectionProps) {
   const [creating, setCreating] = useState(false)
   const [mealTime, setMealTime] = useState(currentTimeHHMM)
   const [copying, setCopying] = useState(false)
   const [copyMessage, setCopyMessage] = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const [templateMessage, setTemplateMessage] = useState('')
 
   async function addMeal() {
     setCreating(true)
@@ -529,11 +532,37 @@ function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, 
     }
   }
 
+  async function handleSaveTemplate() {
+    const name = window.prompt('Template name:')
+    if (!name?.trim()) return
+    setSavingTemplate(true)
+    try {
+      await api.post('/api/v1/meal-templates', { name: name.trim(), date: selectedDate, mealType: type })
+      setTemplateMessage('Saved!')
+      setTimeout(() => setTemplateMessage(''), 3000)
+      onTemplateSaved?.()
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">{MEAL_LABELS[type]}</h2>
         <div className="flex items-center gap-2">
+          {templateMessage && (
+            <span className="text-xs text-teal-400">{templateMessage}</span>
+          )}
+          {logs.length > 0 && (
+            <button
+              onClick={handleSaveTemplate}
+              disabled={savingTemplate}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
+            >
+              {savingTemplate ? '…' : 'Save as template'}
+            </button>
+          )}
           {isToday && copyMessage && (
             <span className="text-xs text-gray-400">{copyMessage}</span>
           )}
@@ -650,12 +679,177 @@ function DatePickerPopover({ selected, onSelect }: { selected: string; onSelect:
   )
 }
 
+// ─── Templates Tab ────────────────────────────────────────────────────────────
+
+interface ApplyFormState {
+  mealType: MealType
+  quantities: Record<string, string>
+}
+
+interface TemplatesTabProps {
+  selectedDate: string
+  onApplied: () => void
+}
+
+function TemplatesTab({ selectedDate, onApplied }: TemplatesTabProps) {
+  const [templates, setTemplates] = useState<MealTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [applyForm, setApplyForm] = useState<ApplyFormState | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await api.get<MealTemplate[]>('/api/v1/meal-templates')
+      setTemplates(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadTemplates() }, [loadTemplates])
+
+  function startApply(t: MealTemplate) {
+    setApplyingId(t.id)
+    setApplyForm({
+      mealType: 'BREAKFAST',
+      quantities: Object.fromEntries(t.items.map((i: MealTemplateItem) => [i.foodId, ''])),
+    })
+  }
+
+  function cancelApply() {
+    setApplyingId(null)
+    setApplyForm(null)
+  }
+
+  async function submitApply(t: MealTemplate) {
+    if (!applyForm) return
+    setSubmitting(true)
+    try {
+      await api.post(`/api/v1/meal-templates/${t.id}/apply`, {
+        date: selectedDate,
+        mealType: applyForm.mealType,
+        items: t.items.map((i: MealTemplateItem) => ({
+          foodId: i.foodId,
+          quantityG: Number(applyForm.quantities[i.foodId]),
+        })),
+      })
+      cancelApply()
+      onApplied()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this template?')) return
+    await api.delete(`/api/v1/meal-templates/${id}`)
+    setTemplates(ts => ts.filter(t => t.id !== id))
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-gray-400">Loading…</div>
+      </div>
+    )
+  }
+
+  const inputCls = 'w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white text-right focus:outline-none focus:ring-1 focus:ring-teal-500'
+
+  return (
+    <div className="space-y-3">
+      {templates.length === 0 ? (
+        <p className="text-sm text-gray-500">No templates saved yet. Use the "Save as template" button in any meal section.</p>
+      ) : (
+        templates.map(t => (
+          <div key={t.id} className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-white font-medium">{t.name}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {t.items.map((i: MealTemplateItem) => i.foodName).join(', ')}
+                </p>
+              </div>
+              <div className="flex gap-2 ml-4 shrink-0">
+                {applyingId !== t.id && (
+                  <button
+                    onClick={() => startApply(t)}
+                    className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Apply
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 text-sm rounded-lg border border-gray-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {applyingId === t.id && applyForm && (
+              <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 w-24 shrink-0">Meal type</span>
+                  <select
+                    value={applyForm.mealType}
+                    onChange={e => setApplyForm(f => f ? { ...f, mealType: e.target.value as MealType } : f)}
+                    className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  >
+                    {MEAL_TYPES.map(mt => (
+                      <option key={mt} value={mt}>{MEAL_LABELS[mt]}</option>
+                    ))}
+                  </select>
+                </div>
+                {t.items.map((item: MealTemplateItem) => (
+                  <div key={item.foodId} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-200 flex-1 truncate">{item.foodName}</span>
+                    <input
+                      type="number"
+                      placeholder="g"
+                      min={0.1}
+                      step={0.1}
+                      value={applyForm.quantities[item.foodId]}
+                      onChange={e => setApplyForm(f => f ? { ...f, quantities: { ...f.quantities, [item.foodId]: e.target.value } } : f)}
+                      className={inputCls}
+                    />
+                    <span className="text-xs text-gray-500">g</span>
+                  </div>
+                ))}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => submitApply(t)}
+                    disabled={submitting || t.items.some((i: MealTemplateItem) => !Number(applyForm.quantities[i.foodId]))}
+                    className="px-4 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+                  >
+                    {submitting ? '…' : 'Apply'}
+                  </button>
+                  <button
+                    onClick={cancelApply}
+                    className="px-4 py-1.5 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
 // ─── Meal Log Page ────────────────────────────────────────────────────────────
 
 export default function MealLog() {
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [logs, setLogs] = useState<MealLogSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'log' | 'templates'>('log')
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -704,7 +898,27 @@ export default function MealLog() {
           </button>
         </div>
       </div>
-      {loading ? (
+      <div className="flex gap-1 border-b border-gray-800">
+        {(['log', 'templates'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm capitalize transition-colors ${
+              activeTab === tab
+                ? 'text-white border-b-2 border-teal-400 -mb-px'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {tab === 'log' ? 'Log' : 'Templates'}
+          </button>
+        ))}
+      </div>
+      {activeTab === 'templates' ? (
+        <TemplatesTab
+          selectedDate={selectedDate}
+          onApplied={() => { setActiveTab('log'); loadLogs() }}
+        />
+      ) : loading ? (
         <div className="flex items-center justify-center min-h-64">
           <div className="text-gray-400">Loading…</div>
         </div>
