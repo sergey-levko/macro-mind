@@ -19,6 +19,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -75,14 +76,19 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(req, headersFor(token)), FoodResponse.class).getBody().id();
     }
 
-    private UUID createMealWithItem(String token, String date, String mealType, UUID foodId, int qty) {
+    private void createMealWithItem(String token, String date, String mealType, UUID foodId, int qty) {
         String logBody = "{\"mealType\":\"" + mealType + "\",\"loggedAt\":\"" + date + "T00:00:00Z\"}";
         MealLogResponse log = restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
                 new HttpEntity<>(logBody, headersFor(token)), MealLogResponse.class).getBody();
         restTemplate.exchange(url("/api/v1/meal-logs/" + log.id() + "/items"), HttpMethod.POST,
                 new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":" + qty + "}", headersFor(token)),
                 MealItemResponse.class);
-        return log.id();
+    }
+
+    private String applyBody(String date, String mealType, UUID foodId, int qty) {
+        return """
+                {"date":"%s","mealType":"%s","items":[{"foodId":"%s","quantityG":%d}]}
+                """.formatted(date, mealType, foodId, qty);
     }
 
     @Test
@@ -92,15 +98,15 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
         String today = LocalDate.now(ZoneOffset.UTC).toString();
         createMealWithItem(token, today, "BREAKFAST", foodId, 100);
 
-        String body = "{\"name\":\"My Breakfast\",\"date\":\"" + today + "\"}";
+        String body = "{\"name\":\"My Breakfast\",\"date\":\"" + today + "\",\"mealType\":\"BREAKFAST\"}";
         ResponseEntity<MealTemplateResponse> response = restTemplate.exchange(
                 url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(body, headersFor(token)), MealTemplateResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody().name()).isEqualTo("My Breakfast");
-        assertThat(response.getBody().itemCount()).isEqualTo(1);
-        assertThat(response.getBody().totals().caloriesKcal()).isEqualByComparingTo("130.00");
+        assertThat(response.getBody().items()).hasSize(1);
+        assertThat(response.getBody().items().get(0).foodName()).isEqualTo("Rice");
         assertThat(response.getBody().id()).isNotNull();
     }
 
@@ -108,7 +114,7 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
     void saveTemplate_noMealsOnDate_returns400() {
         String token = register();
 
-        String body = "{\"name\":\"Empty Day\",\"date\":\"2099-01-01\"}";
+        String body = "{\"name\":\"Empty Day\",\"date\":\"2099-01-01\",\"mealType\":\"BREAKFAST\"}";
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(body, headersFor(token)), Map.class);
@@ -117,13 +123,13 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void listTemplates_returnsSavedTemplatesWithMacroTotals() {
+    void listTemplates_returnsSavedTemplatesWithFoods() {
         String token = register();
         UUID foodId = createFood(token);
         String today = LocalDate.now(ZoneOffset.UTC).toString();
         createMealWithItem(token, today, "LUNCH", foodId, 200);
 
-        String saveBody = "{\"name\":\"My Lunch\",\"date\":\"" + today + "\"}";
+        String saveBody = "{\"name\":\"My Lunch\",\"date\":\"" + today + "\",\"mealType\":\"LUNCH\"}";
         restTemplate.exchange(url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(saveBody, headersFor(token)), MealTemplateResponse.class);
 
@@ -134,35 +140,36 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
         assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(list.getBody()).hasSize(1);
         assertThat(list.getBody()[0].name()).isEqualTo("My Lunch");
-        assertThat(list.getBody()[0].totals().caloriesKcal()).isEqualByComparingTo("260.00");
+        assertThat(list.getBody()[0].items()).hasSize(1);
+        assertThat(list.getBody()[0].items().get(0).foodName()).isEqualTo("Rice");
     }
 
     @Test
-    void applyTemplate_createsMealLogsForDate() {
+    void applyTemplate_createsMealLogForDate() {
         String token = register();
         UUID foodId = createFood(token);
         String sourceDate = LocalDate.now(ZoneOffset.UTC).minusDays(3).toString();
         createMealWithItem(token, sourceDate, "DINNER", foodId, 150);
 
-        String saveBody = "{\"name\":\"Dinner Template\",\"date\":\"" + sourceDate + "\"}";
+        String saveBody = "{\"name\":\"Dinner Template\",\"date\":\"" + sourceDate + "\",\"mealType\":\"DINNER\"}";
         MealTemplateResponse template = restTemplate.exchange(
                 url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(saveBody, headersFor(token)), MealTemplateResponse.class).getBody();
 
         String targetDate = LocalDate.now(ZoneOffset.UTC).minusDays(1).toString();
-        String applyBody = "{\"date\":\"" + targetDate + "\"}";
-        ResponseEntity<MealLogSummaryResponse[]> applied = restTemplate.exchange(
+        ResponseEntity<MealLogSummaryResponse> applied = restTemplate.exchange(
                 url("/api/v1/meal-templates/" + template.id() + "/apply"), HttpMethod.POST,
-                new HttpEntity<>(applyBody, headersFor(token)), MealLogSummaryResponse[].class);
+                new HttpEntity<>(applyBody(targetDate, "LUNCH", foodId, 200), headersFor(token)),
+                MealLogSummaryResponse.class);
 
         assertThat(applied.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(applied.getBody()).hasSize(1);
+        assertThat(applied.getBody().mealType().name()).isEqualTo("LUNCH");
 
         ResponseEntity<MealLogSummaryResponse[]> logs = restTemplate.exchange(
                 url("/api/v1/meal-logs?date=" + targetDate), HttpMethod.GET,
                 new HttpEntity<>(headersFor(token)), MealLogSummaryResponse[].class);
         assertThat(logs.getBody()).hasSize(1);
-        assertThat(logs.getBody()[0].totals().caloriesKcal()).isEqualByComparingTo("195.00");
+        assertThat(logs.getBody()[0].totals().caloriesKcal()).isEqualByComparingTo("260.00");
     }
 
     @Test
@@ -173,15 +180,14 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
         String today = LocalDate.now(ZoneOffset.UTC).toString();
         createMealWithItem(ownerToken, today, "SNACK", foodId, 50);
 
-        String saveBody = "{\"name\":\"Owner Template\",\"date\":\"" + today + "\"}";
+        String saveBody = "{\"name\":\"Owner Template\",\"date\":\"" + today + "\",\"mealType\":\"SNACK\"}";
         MealTemplateResponse template = restTemplate.exchange(
                 url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(saveBody, headersFor(ownerToken)), MealTemplateResponse.class).getBody();
 
-        String applyBody = "{\"date\":\"" + today + "\"}";
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/meal-templates/" + template.id() + "/apply"), HttpMethod.POST,
-                new HttpEntity<>(applyBody, headersFor(otherToken)), Map.class);
+                new HttpEntity<>(applyBody(today, "BREAKFAST", foodId, 100), headersFor(otherToken)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -193,7 +199,7 @@ class MealTemplateIntegrationTest extends AbstractIntegrationTest {
         String today = LocalDate.now(ZoneOffset.UTC).toString();
         createMealWithItem(token, today, "BREAKFAST", foodId, 80);
 
-        String saveBody = "{\"name\":\"To Delete\",\"date\":\"" + today + "\"}";
+        String saveBody = "{\"name\":\"To Delete\",\"date\":\"" + today + "\",\"mealType\":\"BREAKFAST\"}";
         MealTemplateResponse template = restTemplate.exchange(
                 url("/api/v1/meal-templates"), HttpMethod.POST,
                 new HttpEntity<>(saveBody, headersFor(token)), MealTemplateResponse.class).getBody();

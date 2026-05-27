@@ -10,11 +10,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,23 +35,25 @@ class MealTemplateService {
         Instant start = request.date().atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant end = request.date().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
         List<MealLog> logs = mealLogRepository
-                .findWithItemsByUserIdAndLoggedAtBetween(userId, start, end);
-        if (logs.isEmpty()) {
+                .findWithItemsByUserIdAndLoggedAtBetween(userId, start, end)
+                .stream()
+                .filter(l -> l.getMealType() == request.mealType())
+                .toList();
+
+        Set<UUID> uniqueFoodIds = logs.stream()
+                .flatMap(l -> l.getItems().stream())
+                .map(MealItem::getFoodId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (uniqueFoodIds.isEmpty()) {
             throw new NoMealsForDateException(request.date().toString());
         }
 
         MealTemplate template = new MealTemplate(userId, request.name().trim());
-        logs.forEach(log ->
-                log.getItems().forEach(item ->
-                        template.getItems().add(
-                                new MealTemplateItem(template, item.getFoodId(), log.getMealType(), item.getQuantityG())
-                        )
-                )
-        );
+        uniqueFoodIds.forEach(foodId -> template.getItems().add(new MealTemplateItem(template, foodId)));
         MealTemplate saved = templateRepository.save(template);
 
-        Set<UUID> foodIds = saved.getItems().stream().map(MealTemplateItem::getFoodId).collect(Collectors.toSet());
-        Map<UUID, Food> foodMap = foodRepository.findAllById(foodIds).stream()
+        Map<UUID, Food> foodMap = foodRepository.findAllById(uniqueFoodIds).stream()
                 .collect(Collectors.toMap(Food::getId, f -> f));
         return toResponse(saved, foodMap);
     }
@@ -73,31 +73,27 @@ class MealTemplateService {
         return templates.stream().map(t -> toResponse(t, foodMap)).toList();
     }
 
-    List<MealLogSummaryResponse> applyTemplate(UUID userId, UUID templateId, ApplyTemplateRequest request) {
-        MealTemplate template = templateRepository.findById(templateId)
+    MealLogSummaryResponse applyTemplate(UUID userId, UUID templateId, ApplyTemplateRequest request) {
+        templateRepository.findById(templateId)
                 .filter(t -> t.getUserId().equals(userId))
                 .orElseThrow(() -> new MealTemplateNotFoundException(templateId));
 
-        Instant loggedAt = request.date().atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant loggedAt = request.date().atTime(LocalTime.now(ZoneOffset.UTC)).toInstant(ZoneOffset.UTC);
 
-        Map<MealType, List<MealTemplateItem>> byType = template.getItems().stream()
-                .collect(Collectors.groupingBy(MealTemplateItem::getMealType));
+        MealLog log = new MealLog(userId, request.mealType(), loggedAt);
+        request.items().forEach(item ->
+                log.getItems().add(new MealItem(log, item.foodId(), item.quantityG())));
+        MealLog saved = mealLogRepository.save(log);
 
-        Set<UUID> foodIds = template.getItems().stream()
-                .map(MealTemplateItem::getFoodId).collect(Collectors.toSet());
+        Set<UUID> foodIds = saved.getItems().stream()
+                .map(MealItem::getFoodId).collect(Collectors.toSet());
         Map<UUID, Food> foodMap = foodRepository.findAllById(foodIds).stream()
                 .collect(Collectors.toMap(Food::getId, f -> f));
+        MacroTotals totals = saved.getItems().stream()
+                .map(item -> computeMacros(item.getQuantityG(), foodMap.get(item.getFoodId())))
+                .reduce(MacroTotals.ZERO, MacroTotals::add);
 
-        return byType.entrySet().stream().map(entry -> {
-            MealLog log = new MealLog(userId, entry.getKey(), loggedAt);
-            entry.getValue().forEach(item ->
-                    log.getItems().add(new MealItem(log, item.getFoodId(), item.getQuantityG())));
-            MealLog saved = mealLogRepository.save(log);
-            MacroTotals totals = saved.getItems().stream()
-                    .map(item -> computeMacros(item.getQuantityG(), foodMap.get(item.getFoodId())))
-                    .reduce(MacroTotals.ZERO, MacroTotals::add);
-            return new MealLogSummaryResponse(saved.getId(), saved.getMealType(), saved.getLoggedAt(), totals);
-        }).toList();
+        return new MealLogSummaryResponse(saved.getId(), saved.getMealType(), saved.getLoggedAt(), totals);
     }
 
     void deleteTemplate(UUID userId, UUID templateId) {
@@ -108,15 +104,13 @@ class MealTemplateService {
     }
 
     private MealTemplateResponse toResponse(MealTemplate template, Map<UUID, Food> foodMap) {
-        MacroTotals totals = template.getItems().stream()
-                .map(item -> computeMacros(item.getQuantityG(), foodMap.get(item.getFoodId())))
-                .reduce(MacroTotals.ZERO, MacroTotals::add);
-        return new MealTemplateResponse(
-                template.getId(),
-                template.getName(),
-                template.getCreatedAt(),
-                template.getItems().size(),
-                totals);
+        List<MealTemplateItemResponse> items = template.getItems().stream()
+                .map(item -> {
+                    Food food = foodMap.get(item.getFoodId());
+                    return new MealTemplateItemResponse(item.getFoodId(), food != null ? food.getName() : "Unknown");
+                })
+                .toList();
+        return new MealTemplateResponse(template.getId(), template.getName(), template.getCreatedAt(), items);
     }
 
     private MacroTotals computeMacros(BigDecimal quantityG, Food food) {

@@ -31,8 +31,8 @@ class MealTemplateController {
     }
 
     @PostMapping("/{id}/apply")
-    List<MealLogSummaryResponse> apply(@PathVariable UUID id,
-                                       @Valid @RequestBody ApplyTemplateRequest request) {
+    MealLogSummaryResponse apply(@PathVariable UUID id,
+                                 @Valid @RequestBody ApplyTemplateRequest request) {
         return service.applyTemplate(SecurityUtils.currentUserId(), id, request);
     }
 

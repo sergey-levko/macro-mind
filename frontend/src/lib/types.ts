@@ -117,12 +117,16 @@ export interface UsdaFoodResult {
   description: string
 }
 
+export interface MealTemplateItem {
+  foodId: string
+  foodName: string
+}
+
 export interface MealTemplate {
   id: string
   name: string
   createdAt: string
-  itemCount: number
-  totals: MacroTotals
+  items: MealTemplateItem[]
 }
 
 export interface AuthResponse {

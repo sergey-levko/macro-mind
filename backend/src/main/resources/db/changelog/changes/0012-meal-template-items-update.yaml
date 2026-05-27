@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0012-meal-template-items-update
+      author: system
+      changes:
+        - dropColumn:
+            tableName: meal_template_items
+            columnName: meal_type
+        - dropColumn:
+            tableName: meal_template_items
+            columnName: quantity_g
