@@ -342,19 +342,10 @@ export default function Coach() {
         const daily = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=DAILY&periodStart=${selectedDate}`)
         if (daily.length > 0) {
           setDailyInsight(daily[0])
-          setDailyLoading(false)
-        } else if (selectedDate === todayStr()) {
-          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=DAILY')
-          if (all.length > 0) {
-            setSelectedDate(all[0].periodStart)
-          } else {
-            setDailyInsight(null)
-            setDailyLoading(false)
-          }
         } else {
           setDailyInsight(null)
-          setDailyLoading(false)
         }
+        setDailyLoading(false)
       } catch {
         setDailyError(true)
         setDailyLoading(false)
@@ -376,19 +367,10 @@ export default function Coach() {
         const weekly = await api.get<AdviceResponse[]>(`/api/v1/advice?adviceType=WEEKLY&periodStart=${selectedWeek}`)
         if (weekly.length > 0) {
           setWeeklyInsight(weekly[0])
-          setWeeklyLoading(false)
-        } else if (selectedWeek === mondayStr()) {
-          const all = await api.get<AdviceResponse[]>('/api/v1/advice?adviceType=WEEKLY')
-          if (all.length > 0) {
-            setSelectedWeek(all[0].periodStart)
-          } else {
-            setWeeklyInsight(null)
-            setWeeklyLoading(false)
-          }
         } else {
           setWeeklyInsight(null)
-          setWeeklyLoading(false)
         }
+        setWeeklyLoading(false)
       } catch {
         setWeeklyError(true)
         setWeeklyLoading(false)
