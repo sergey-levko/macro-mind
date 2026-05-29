@@ -119,13 +119,13 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
   const [showCreate, setShowCreate] = useState(false)
   const [importingFdcId, setImportingFdcId] = useState<number | null>(null)
   const [recentFoods, setRecentFoods] = useState<Food[]>([])
+  const [usdaEnabled, setUsdaEnabled] = useState(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    api.get<Food[]>('/api/v1/foods/recent?limit=10')
-      .then(setRecentFoods)
-      .catch(() => {})
+    api.get<Food[]>('/api/v1/foods/recent?limit=10').then(setRecentFoods).catch(() => {})
+    api.get<{ usdaEnabled: boolean }>('/api/v1/settings').then(s => setUsdaEnabled(s.usdaEnabled)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -151,10 +151,12 @@ function FoodItemForm({ logId, onAdded }: FoodItemFormProps) {
     debounceRef.current = setTimeout(async () => {
       const [foodsResult, usdaResult] = await Promise.allSettled([
         api.get<{ content: Food[] }>(`/api/v1/foods?search=${encodeURIComponent(v)}`),
-        api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`),
+        usdaEnabled
+          ? api.get<UsdaFoodResult[]>(`/api/v1/foods/usda-search?q=${encodeURIComponent(v)}`)
+          : Promise.resolve([]),
       ])
       const foods = foodsResult.status === 'fulfilled' ? foodsResult.value.content : []
-      const usda = usdaResult.status === 'fulfilled' ? usdaResult.value : []
+      const usda = usdaEnabled && usdaResult.status === 'fulfilled' ? usdaResult.value : []
       setResults(foods)
       setUsdaResults(usda)
       setNoResults(foods.length === 0 && usda.length === 0)

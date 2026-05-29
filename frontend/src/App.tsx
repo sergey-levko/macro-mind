@@ -13,6 +13,7 @@ import Profile from './pages/Profile'
 import Foods from './pages/Foods'
 import Coach from './pages/Coach'
 import Onboarding from './pages/Onboarding'
+import Settings from './pages/Settings'
 
 function RouteBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -55,6 +56,7 @@ export default function App() {
                 <Route path="foods" element={<RouteBoundary><Foods /></RouteBoundary>} />
                 <Route path="coach" element={<RouteBoundary><Coach /></RouteBoundary>} />
                 <Route path="profile" element={<RouteBoundary><Profile /></RouteBoundary>} />
+                <Route path="settings" element={<RouteBoundary><Settings /></RouteBoundary>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

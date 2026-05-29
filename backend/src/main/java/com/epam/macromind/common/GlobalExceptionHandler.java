@@ -9,6 +9,7 @@ import com.epam.macromind.food.FoodInUseException;
 import com.epam.macromind.goal.GoalGenerationException;
 import com.epam.macromind.goal.GoalNotFoundException;
 import com.epam.macromind.food.FoodNotFoundException;
+import com.epam.macromind.food.UsdaDisabledException;
 import com.epam.macromind.food.UsdaFoodNotFoundException;
 import com.epam.macromind.food.UsdaServiceUnavailableException;
 import com.epam.macromind.meal.MealItemNotFoundException;
@@ -66,6 +67,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FoodInUseException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     Map<String, String> handleFoodInUse(FoodInUseException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+    @ExceptionHandler(UsdaDisabledException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    Map<String, String> handleUsdaDisabled(UsdaDisabledException ex) {
         return Map.of("message", ex.getMessage());
     }
 

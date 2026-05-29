@@ -33,6 +33,9 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash = "";
 
+    @Column(name = "usda_enabled", nullable = false)
+    private boolean usdaEnabled = true;
+
     protected User() {}
 
     public User(String name, String email, String passwordHash, Integer age, BigDecimal weightKg, BigDecimal heightCm, GoalType goalType) {
@@ -65,4 +68,7 @@ public class User {
     public BigDecimal getHeightCm() { return heightCm; }
     public GoalType getGoalType() { return goalType; }
     public String getPasswordHash() { return passwordHash; }
+    public boolean isUsdaEnabled() { return usdaEnabled; }
+
+    public void setUsdaEnabled(boolean usdaEnabled) { this.usdaEnabled = usdaEnabled; }
 }
