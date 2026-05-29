@@ -1,4 +1,4 @@
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Retrieve the user's most recently used foods
 The system SHALL provide an endpoint that returns the foods most recently added as meal items by the authenticated user, ordered by last-used descending and deduplicated by food ID, up to a configurable limit (default 5, maximum 10).
