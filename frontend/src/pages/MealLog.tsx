@@ -480,7 +480,6 @@ interface MealSectionProps {
   type: MealType
   logs: MealLogSummary[]
   selectedDate: string
-  isToday: boolean
   onCreated: () => void
   onDeleted: () => void
   onItemChanged: () => void
@@ -492,11 +491,9 @@ function currentTimeHHMM(): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
 
-function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, onItemChanged, onTemplateSaved }: MealSectionProps) {
+function MealSection({ type, logs, selectedDate, onCreated, onDeleted, onItemChanged, onTemplateSaved }: MealSectionProps) {
   const [creating, setCreating] = useState(false)
   const [mealTime, setMealTime] = useState(currentTimeHHMM)
-  const [copying, setCopying] = useState(false)
-  const [copyMessage, setCopyMessage] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [templateMessage, setTemplateMessage] = useState('')
 
@@ -510,25 +507,6 @@ function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, 
       onCreated()
     } finally {
       setCreating(false)
-    }
-  }
-
-  async function handleCopy() {
-    setCopying(true)
-    try {
-      const copied = await api.post<MealLogSummary[]>('/api/v1/meal-logs/copy-previous-day', {
-        date: selectedDate,
-        mealType: type,
-      })
-      if (copied.length === 0) {
-        setCopyMessage('No meals yesterday')
-        setTimeout(() => setCopyMessage(''), 3000)
-      } else {
-        setCopyMessage('')
-        onCreated()
-      }
-    } finally {
-      setCopying(false)
     }
   }
 
@@ -561,18 +539,6 @@ function MealSection({ type, logs, selectedDate, isToday, onCreated, onDeleted, 
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
             >
               {savingTemplate ? '…' : 'Save as template'}
-            </button>
-          )}
-          {isToday && copyMessage && (
-            <span className="text-xs text-gray-400">{copyMessage}</span>
-          )}
-          {isToday && (
-            <button
-              onClick={handleCopy}
-              disabled={copying}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 text-sm rounded-lg border border-gray-700 transition-colors"
-            >
-              {copying ? '…' : 'Copy yesterday\'s meal'}
             </button>
           )}
           <input
@@ -929,7 +895,6 @@ export default function MealLog() {
             type={type}
             logs={byType(type)}
             selectedDate={selectedDate}
-            isToday={isToday}
             onCreated={loadLogs}
             onDeleted={loadLogs}
             onItemChanged={refreshLogs}

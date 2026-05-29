@@ -62,8 +62,4 @@ class MealController {
         service.removeItem(SecurityUtils.currentUserId(), id, itemId);
     }
 
-    @PostMapping("/copy-previous-day")
-    List<MealLogSummaryResponse> copyPreviousDay(@Valid @RequestBody CopyMealsRequest request) {
-        return service.copyPreviousDay(SecurityUtils.currentUserId(), request.date(), request.mealType());
-    }
 }
