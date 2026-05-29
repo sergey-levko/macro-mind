@@ -26,21 +26,6 @@ The system SHALL allow the user to create a new meal log for a given meal type a
 - **WHEN** the user clicks the delete button on a meal log and confirms
 - **THEN** the app calls `DELETE /api/v1/meal-logs/{id}` and the log disappears from the page without a full reload
 
-### Requirement: Copy previous day's meals from the meal log page header
-The system SHALL display a "Copy yesterday's meals" button in the meal log page header. When clicked, it SHALL call `POST /api/v1/meal-logs/copy` with `sourceDate` set to the day before the currently selected date and `targetDate` set to the currently selected date, then refresh the meal log view.
-
-#### Scenario: User copies previous day's meals
-- **WHEN** the user clicks "Copy yesterday's meals" in the page header
-- **THEN** the app calls `POST /api/v1/meal-logs/copy` with `sourceDate` as the day before the selected date and `targetDate` as the selected date, and the meal log view refreshes to show the copied meals
-
-#### Scenario: Button is hidden when previous day has no meals
-- **WHEN** the previous day has no meal logs
-- **THEN** the "Copy yesterday's meals" button is not rendered or is visually disabled
-
-#### Scenario: Copy operation shows a loading state
-- **WHEN** the copy request is in-flight
-- **THEN** the button is disabled and shows a loading indicator to prevent duplicate submissions
-
 ### Requirement: Add and remove food items from a meal log
 The system SHALL allow the user to search for foods, select one, enter a quantity, and add it to a meal log as an item.
 
