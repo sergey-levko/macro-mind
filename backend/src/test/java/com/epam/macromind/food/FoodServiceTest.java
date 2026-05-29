@@ -2,6 +2,8 @@ package com.epam.macromind.food;
 
 import com.epam.macromind.common.PageResponse;
 import com.epam.macromind.meal.MealItemRepository;
+import com.epam.macromind.user.GoalType;
+import com.epam.macromind.user.User;
 import com.epam.macromind.user.UserNotFoundException;
 import com.epam.macromind.user.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,11 @@ class FoodServiceTest {
         return new Food(USER_ID, "Chicken Breast", "CUSTOM",
                 new BigDecimal("165"), new BigDecimal("31"),
                 new BigDecimal("0"), new BigDecimal("3.6"));
+    }
+
+    private User usdaEnabledUser() {
+        return new User("Test", "test@example.com", "hash", 30,
+                new BigDecimal("70"), new BigDecimal("175"), GoalType.MAINTAIN_WEIGHT);
     }
 
     @Test
@@ -167,7 +174,7 @@ class FoodServiceTest {
                         new UsdaFoodDto.FoodNutrient(new UsdaFoodDto.Nutrient(1005), new BigDecimal("77")),
                         new UsdaFoodDto.FoodNutrient(new UsdaFoodDto.Nutrient(1004), new BigDecimal("2.9"))
                 ));
-        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(usdaEnabledUser()));
         when(usdaFoodClient.fetch(12345)).thenReturn(dto);
         when(foodRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -179,7 +186,7 @@ class FoodServiceTest {
 
     @Test
     void importFood_usdaNotFound_throwsUsdaFoodNotFoundException() {
-        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(usdaEnabledUser()));
         when(usdaFoodClient.fetch(99999)).thenThrow(new UsdaFoodNotFoundException(99999));
 
         assertThatThrownBy(() -> service.importFood(USER_ID, new ImportFoodRequest(99999)))
@@ -188,7 +195,7 @@ class FoodServiceTest {
 
     @Test
     void importFood_usdaUnavailable_throwsUsdaServiceUnavailableException() {
-        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(usdaEnabledUser()));
         when(usdaFoodClient.fetch(any(int.class)))
                 .thenThrow(new UsdaServiceUnavailableException("unreachable", null));
 
