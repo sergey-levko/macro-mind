@@ -64,32 +64,6 @@ class MealService {
         return logs.stream().map(l -> toSummary(l, foodMap)).toList();
     }
 
-    List<MealLogSummaryResponse> copyPreviousDay(UUID userId, LocalDate targetDate, MealType mealType) {
-        LocalDate sourceDate = targetDate.minusDays(1);
-        Instant sourceStart = sourceDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant sourceEnd = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        List<MealLog> sourceLogs = mealLogRepository
-                .findByUserIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(userId, sourceStart, sourceEnd);
-        if (mealType != null) {
-            sourceLogs = sourceLogs.stream().filter(l -> l.getMealType() == mealType).toList();
-        }
-        if (sourceLogs.isEmpty()) return List.of();
-        Instant targetLoggedAt = Instant.now();
-        Set<UUID> foodIds = sourceLogs.stream()
-                .flatMap(l -> l.getItems().stream())
-                .map(MealItem::getFoodId)
-                .collect(Collectors.toSet());
-        Map<UUID, Food> foodMap = foodRepository.findAllById(foodIds).stream()
-                .collect(Collectors.toMap(Food::getId, f -> f));
-        List<MealLog> newLogs = sourceLogs.stream().map(source -> {
-            MealLog newLog = new MealLog(userId, source.getMealType(), targetLoggedAt);
-            source.getItems().forEach(item ->
-                    newLog.getItems().add(new MealItem(newLog, item.getFoodId(), item.getQuantityG())));
-            return mealLogRepository.save(newLog);
-        }).toList();
-        return newLogs.stream().map(l -> toSummary(l, foodMap)).toList();
-    }
-
     MealLogResponse updateMealLog(UUID userId, UUID logId, UpdateMealLogRequest request) {
         MealLog log = mealLogRepository.findById(logId)
                 .orElseThrow(() -> new MealLogNotFoundException(logId));
