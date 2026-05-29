@@ -15,6 +15,8 @@ import java.util.UUID;
 @Service
 class FoodService {
 
+    private static final int MAX_RECENT_FOODS = 10;
+
     private final FoodRepository foodRepository;
     private final UserRepository userRepository;
     private final UsdaFoodClient usdaFoodClient;
@@ -77,7 +79,7 @@ class FoodService {
     }
 
     List<FoodResponse> getRecentFoods(UUID userId, int limit) {
-        int capped = Math.min(limit, 10);
+        int capped = Math.min(limit, MAX_RECENT_FOODS);
         return foodRepository.findRecentByUserId(userId, capped).stream()
                 .map(FoodResponse::from)
                 .toList();

@@ -270,6 +270,31 @@ class FoodIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getRecentFoods_limitAboveCap_returnsCappedResults() {
+        String token = register();
+
+        UUID logId = UUID.fromString((String) restTemplate.exchange(url("/api/v1/meal-logs"), HttpMethod.POST,
+                new HttpEntity<>("{\"mealType\":\"LUNCH\",\"loggedAt\":\"2024-03-01T12:00:00Z\"}", headersFor(token)),
+                Map.class).getBody().get("id"));
+
+        for (int i = 1; i <= 12; i++) {
+            CreateFoodRequest req = new CreateFoodRequest("Cap Food " + i,
+                    new BigDecimal("100"), new BigDecimal("10"), new BigDecimal("10"), new BigDecimal("5"));
+            UUID foodId = restTemplate.exchange(url("/api/v1/foods"), HttpMethod.POST,
+                    new HttpEntity<>(req, headersFor(token)), FoodResponse.class).getBody().id();
+            restTemplate.exchange(url("/api/v1/meal-logs/" + logId + "/items"), HttpMethod.POST,
+                    new HttpEntity<>("{\"foodId\":\"" + foodId + "\",\"quantityG\":100}", headersFor(token)), Map.class);
+        }
+
+        ResponseEntity<FoodResponse[]> response = restTemplate.exchange(
+                url("/api/v1/foods/recent?limit=50"), HttpMethod.GET,
+                new HttpEntity<>(headersFor(token)), FoodResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(10);
+    }
+
+    @Test
     void importFood_fromUsda_persistsWithUsdaSource() {
         String token = register();
         String usdaResponse = """
