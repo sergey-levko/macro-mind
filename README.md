@@ -44,9 +44,10 @@ cd backend
 
 The API starts on `http://localhost:8080`.
 
-> **AI features** require an Anthropic API key:
+> **API keys** are required for full functionality:
 > ```bash
-> export ANTHROPIC_API_KEY=sk-ant-...
+> export ANTHROPIC_API_KEY=sk-ant-...   # AI Coach and goal suggestions
+> export USDA_API_KEY=...               # USDA FoodData Central food search and import
 > ```
 
 ### 3. Run the frontend
