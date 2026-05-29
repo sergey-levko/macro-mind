@@ -84,12 +84,20 @@ class FoodService {
     }
 
     List<UsdaFoodResult> searchUsda(UUID userId, String query) {
-        validateUserExists(userId);
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (!user.isUsdaEnabled()) {
+            return List.of();
+        }
         return usdaFoodClient.search(query);
     }
 
     FoodResponse importFood(UUID userId, ImportFoodRequest request) {
-        validateUserExists(userId);
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (!user.isUsdaEnabled()) {
+            throw new UsdaDisabledException();
+        }
         UsdaFoodDto dto = usdaFoodClient.fetch(request.fdcId());
         BigDecimal calories = dto.getNutrientAmount(1008);
         BigDecimal protein = dto.getNutrientAmount(1003);

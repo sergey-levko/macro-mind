@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0013-usda-enabled
+      author: system
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: usda_enabled
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true

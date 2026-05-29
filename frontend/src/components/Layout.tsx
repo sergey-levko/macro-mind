@@ -78,6 +78,18 @@ export default function Layout() {
           >
             Profile
           </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-teal-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            Settings
+          </NavLink>
         </nav>
         <div className="p-3 border-t border-gray-800">
           <button
